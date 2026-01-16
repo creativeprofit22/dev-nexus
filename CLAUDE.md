@@ -8,11 +8,36 @@ A visually immersive, local-first development workstation that unifies project m
 
 ## Pipeline State
 Phase: build
-Feature: [Next feature TBD]
-Features-Completed: Projects, Prompts, Notes, Components
-Features-Remaining: Flow Mapper, Claude Code Sync, Structure Explorer (3D)
+Feature: Structure Explorer (3D)
+Features-Completed: Projects, Prompts, Notes, Components, Flow Mapper, Claude Code Sync
+Features-Remaining: Structure Explorer (3D)
 
 ## Last Session (2026-01-16)
+**Feature**: Claude Code Sync - COMPLETE ✅
+
+### Implementation
+System to sync CLAUDE.md files between DevNexus projects and their actual project directories:
+- tRPC router with 4 procedures (readFromDisk, get, syncFromDisk, saveToDisk)
+- React hooks (useClaudeMd, useClaudeMdMutations)
+- ClaudeMdEditor component with two-way sync
+- Integrated into Projects page via detail dialog
+
+### Files Created
+- `src/modules/projects/api/claudemd.router.ts` - tRPC procedures for CLAUDE.md sync
+- `src/modules/projects/hooks/useClaudeMd.ts` - Query and mutation hooks
+- `src/modules/projects/components/ClaudeMdEditor/index.tsx` - Editor with sync status
+
+### Files Modified
+- `src/core/trpc/router.ts` - Added claudeMdRouter
+- `src/app/(authenticated)/projects/page.tsx` - Added project detail dialog with editor
+
+### Quality Checks
+- TypeScript: ✅ New code compiles (pre-existing errors in flows module)
+- ESLint: ✅ 0 errors in new code
+
+---
+
+## Previous Session (2026-01-16 Earlier)
 **Feature**: Component Studio - COMPLETE ✅
 
 ### Implementation
@@ -162,17 +187,17 @@ After restart:
 - [x] tRPC configuration
 - [x] Project Hub module with full CRUD operations
 
-### Phase 2: Content Management ⚠️ PARTIAL
+### Phase 2: Content Management ✅ COMPLETE
 - [x] Prompt Library (full CRUD with variables, categories, tags)
 - [x] Notes with Tiptap (rich text editing, organization)
-- [ ] Claude Code sync system
+- [x] Claude Code Sync (two-way CLAUDE.md sync between DevNexus and project directories)
 
-### Phase 3: Visual Tools ⚠️ IN PROGRESS
+### Phase 3: Visual Tools ✅ COMPLETE
 - [x] Component Studio (live previews, code editor, props/variants, favorites, usage tracking)
-- [ ] **NEXT**: Flow Mapper with ReactFlow
+- [x] Flow Mapper with ReactFlow
 
-### Phase 4: 3D & Polish
-- [ ] Structure Explorer (Three.js file tree visualization)
+### Phase 4: 3D & Polish ⚠️ IN PROGRESS
+- [ ] **NEXT**: Structure Explorer (Three.js file tree visualization)
 - [ ] Performance optimization
 - [ ] Final polish and testing
 

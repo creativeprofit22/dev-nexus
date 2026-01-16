@@ -12,6 +12,10 @@ import { Button } from "@/shared/components/ui/Button";
 import { Input } from "@/shared/components/ui/Input";
 import { ArrowLeft, Check, Loader2, AlertCircle } from "lucide-react";
 import type { Edge, Viewport } from "@xyflow/react";
+import type {
+  ReactFlowNode,
+  ReactFlowEdge,
+} from "@/core/db/schema/flows.schema";
 
 interface FlowEditorViewProps {
   flowId: string;
@@ -37,8 +41,8 @@ export function FlowEditorView({ flowId }: FlowEditorViewProps) {
   const pendingViewportRef = useRef<Viewport | null>(null);
 
   // Store flow edges/nodes in refs for use in callbacks without triggering re-renders
-  const flowEdgesRef = useRef<typeof flow.edges | undefined>(undefined);
-  const flowNodesRef = useRef<typeof flow.nodes | undefined>(undefined);
+  const flowEdgesRef = useRef<ReactFlowEdge[] | undefined>(undefined);
+  const flowNodesRef = useRef<ReactFlowNode[] | undefined>(undefined);
 
   // Sync flow name when it changes from server (e.g., initial load)
   // Using state-based tracking to avoid lint warnings about refs during render

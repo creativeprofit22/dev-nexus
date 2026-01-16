@@ -8,6 +8,7 @@ import { FolderBrowser } from "@/modules/projects/components/FolderBrowser";
 import { Button } from "@/shared/components/ui/Button";
 import { Input } from "@/shared/components/ui/Input";
 import { Dialog } from "@/shared/components/ui/Dialog";
+import { ClaudeMdEditor } from "@/modules/projects/components/ClaudeMdEditor";
 import type {
   Project,
   ProjectStatus,
@@ -25,6 +26,7 @@ export default function ProjectsPage() {
   const [dialogMode, setDialogMode] = useState<DialogMode>(null);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [showFolderBrowser, setShowFolderBrowser] = useState(false);
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
 
   // Form state
   const [formName, setFormName] = useState("");
@@ -113,6 +115,13 @@ export default function ProjectsPage() {
     deleteProject.mutate({ id });
   };
 
+  const handleProjectClick = (id: string) => {
+    const project = projects?.find((p) => p.id === id);
+    if (project) {
+      setSelectedProject(project);
+    }
+  };
+
   const isMutating =
     createProject.isLoading ||
     updateProject.isLoading ||
@@ -189,6 +198,7 @@ export default function ProjectsPage() {
               project={project}
               onEdit={handleOpenEdit}
               onDelete={handleDelete}
+              onClick={handleProjectClick}
             />
           ))}
         </div>
@@ -338,6 +348,24 @@ export default function ProjectsPage() {
         }}
         initialPath={formPath || undefined}
       />
+
+      {/* Project Detail Dialog with CLAUDE.md Editor */}
+      <Dialog
+        open={selectedProject !== null}
+        onOpenChange={(open) => !open && setSelectedProject(null)}
+        title={selectedProject?.name ?? "Project Details"}
+        description={selectedProject?.description ?? undefined}
+      >
+        {selectedProject && (
+          <div className="h-[500px]">
+            <ClaudeMdEditor
+              key={selectedProject.id}
+              projectId={selectedProject.id}
+              projectPath={selectedProject.pathWSL}
+            />
+          </div>
+        )}
+      </Dialog>
     </div>
   );
 }

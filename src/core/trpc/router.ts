@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { publicProcedure, router } from "./init";
 import { projectsRouter } from "@/modules/projects/api/projects.router";
+import { claudeMdRouter } from "@/modules/projects/api/claudemd.router";
 import { promptsRouter } from "@/modules/prompts/api/prompts.router";
 import { notesRouter } from "@/modules/notes/api/notes.router";
 import { componentsRouter } from "@/modules/components/api/components.router";
@@ -66,6 +67,7 @@ export const appRouter = router({
 
   // Phase 1: Module routers
   projects: projectsRouter,
+  claudeMd: claudeMdRouter,
   prompts: promptsRouter,
   notes: notesRouter,
   components: componentsRouter,
