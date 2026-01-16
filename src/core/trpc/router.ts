@@ -6,6 +6,7 @@ import { promptsRouter } from "@/modules/prompts/api/prompts.router";
 import { notesRouter } from "@/modules/notes/api/notes.router";
 import { componentsRouter } from "@/modules/components/api/components.router";
 import { flowsRouter } from "@/modules/flows/api/flows.router";
+import { structureRouter } from "@/modules/structure/api/structure.router";
 
 /**
  * Main application router
@@ -72,6 +73,7 @@ export const appRouter = router({
   notes: notesRouter,
   components: componentsRouter,
   flows: flowsRouter,
+  structure: structureRouter,
 
   // Phase 1: Module routers (to be added):
   // snippets: snippetsRouter,
