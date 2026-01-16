@@ -1,4 +1,4 @@
-import { sqliteTable, text, index } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, index } from "drizzle-orm/sqlite-core";
 import { sql } from "drizzle-orm";
 import { projects } from "./projects.schema";
 
@@ -7,9 +7,7 @@ export const notes = sqliteTable(
   {
     id: text("id").primaryKey(),
     title: text("title").notNull(),
-    content: text("content", { mode: "json" })
-      .$type<TiptapDocument>()
-      .notNull(),
+    content: text("content").notNull(), // Tiptap JSON or HTML as string
     tags: text("tags", { mode: "json" })
       .$type<string[]>()
       .default(sql`'[]'`)
@@ -17,30 +15,13 @@ export const notes = sqliteTable(
     projectId: text("projectId").references(() => projects.id, {
       onDelete: "set null",
     }),
+    isPinned: integer("isPinned", { mode: "boolean" }).default(false).notNull(),
     createdAt: text("createdAt").notNull(),
     updatedAt: text("updatedAt").notNull(),
   },
   (table) => ({
     projectIdIdx: index("idx_notes_projectId").on(table.projectId),
     updatedAtIdx: index("idx_notes_updatedAt").on(table.updatedAt),
+    isPinnedIdx: index("idx_notes_isPinned").on(table.isPinned),
   })
 );
-
-// Type definition for Tiptap document structure
-export interface TiptapDocument {
-  type: "doc";
-  content?: TiptapNode[];
-}
-
-export interface TiptapNode {
-  type: string;
-  attrs?: Record<string, unknown>;
-  content?: TiptapNode[];
-  marks?: TiptapMark[];
-  text?: string;
-}
-
-export interface TiptapMark {
-  type: string;
-  attrs?: Record<string, unknown>;
-}

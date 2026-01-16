@@ -2,6 +2,7 @@ import { z } from "zod";
 import { publicProcedure, router } from "./init";
 import { projectsRouter } from "@/modules/projects/api/projects.router";
 import { promptsRouter } from "@/modules/prompts/api/prompts.router";
+import { notesRouter } from "@/modules/notes/api/notes.router";
 
 /**
  * Main application router
@@ -15,6 +16,7 @@ import { promptsRouter } from "@/modules/prompts/api/prompts.router";
  * Phase 1 Module Routers:
  * - projects: Project management operations (ADDED)
  * - prompts: Prompt library CRUD operations (ADDED)
+ * - notes: Rich text notes with organization (ADDED)
  *
  * Phase 1 Module Routers (to be added):
  * - snippets: Code snippet CRUD operations
@@ -62,6 +64,7 @@ export const appRouter = router({
   // Phase 1: Module routers
   projects: projectsRouter,
   prompts: promptsRouter,
+  notes: notesRouter,
 
   // Phase 1: Module routers (to be added):
   // snippets: snippetsRouter,
