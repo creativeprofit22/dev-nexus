@@ -1,6 +1,8 @@
-import { sqliteTable, text, index } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, index } from "drizzle-orm/sqlite-core";
 import { sql } from "drizzle-orm";
 import { projects } from "./projects.schema";
+
+export type ComponentCategory = "react" | "threejs" | "gsap" | "ui" | "layout";
 
 export const components = sqliteTable(
   "components",
@@ -17,7 +19,7 @@ export const components = sqliteTable(
       .$type<ComponentVariant[]>()
       .default(sql`'[]'`)
       .notNull(),
-    category: text("category").notNull(),
+    category: text("category").$type<ComponentCategory>().notNull(),
     tags: text("tags", { mode: "json" })
       .$type<string[]>()
       .default(sql`'[]'`)
@@ -26,6 +28,11 @@ export const components = sqliteTable(
     projectId: text("projectId").references(() => projects.id, {
       onDelete: "set null",
     }),
+    isFavorite: integer("isFavorite", { mode: "boolean" })
+      .default(false)
+      .notNull(),
+    usageCount: integer("usageCount").default(0).notNull(),
+    lastUsed: text("lastUsed"),
     createdAt: text("createdAt").notNull(),
     updatedAt: text("updatedAt").notNull(),
   },

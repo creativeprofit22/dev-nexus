@@ -3,6 +3,7 @@ import { publicProcedure, router } from "./init";
 import { projectsRouter } from "@/modules/projects/api/projects.router";
 import { promptsRouter } from "@/modules/prompts/api/prompts.router";
 import { notesRouter } from "@/modules/notes/api/notes.router";
+import { componentsRouter } from "@/modules/components/api/components.router";
 
 /**
  * Main application router
@@ -17,6 +18,7 @@ import { notesRouter } from "@/modules/notes/api/notes.router";
  * - projects: Project management operations (ADDED)
  * - prompts: Prompt library CRUD operations (ADDED)
  * - notes: Rich text notes with organization (ADDED)
+ * - components: Component library with live previews (ADDED)
  *
  * Phase 1 Module Routers (to be added):
  * - snippets: Code snippet CRUD operations
@@ -65,6 +67,7 @@ export const appRouter = router({
   projects: projectsRouter,
   prompts: promptsRouter,
   notes: notesRouter,
+  components: componentsRouter,
 
   // Phase 1: Module routers (to be added):
   // snippets: snippetsRouter,

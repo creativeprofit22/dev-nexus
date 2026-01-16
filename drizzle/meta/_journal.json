@@ -8,6 +8,13 @@
       "when": 1768577429579,
       "tag": "0000_familiar_arclight",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1768584924793,
+      "tag": "0001_thankful_talon",
+      "breakpoints": true
     }
   ]
 }
