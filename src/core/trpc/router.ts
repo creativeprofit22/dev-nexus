@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { publicProcedure, router } from "./init";
 import { projectsRouter } from "@/modules/projects/api/projects.router";
+import { promptsRouter } from "@/modules/prompts/api/prompts.router";
 
 /**
  * Main application router
@@ -11,9 +12,12 @@ import { projectsRouter } from "@/modules/projects/api/projects.router";
  * - healthcheck: Basic health check endpoint
  * - hello: Example query with input validation
  *
+ * Phase 1 Module Routers:
+ * - projects: Project management operations (ADDED)
+ * - prompts: Prompt library CRUD operations (ADDED)
+ *
  * Phase 1 Module Routers (to be added):
  * - snippets: Code snippet CRUD operations
- * - projects: Project management operations (ADDED)
  * - tags: Tag management operations
  * - analytics: Usage analytics and stats
  *
@@ -23,6 +27,7 @@ import { projectsRouter } from "@/modules/projects/api/projects.router";
  * export const appRouter = router({
  *   snippets: snippetsRouter,
  *   projects: projectsRouter,
+ *   prompts: promptsRouter,
  *   // ... other module routers
  * });
  */
@@ -56,6 +61,7 @@ export const appRouter = router({
 
   // Phase 1: Module routers
   projects: projectsRouter,
+  prompts: promptsRouter,
 
   // Phase 1: Module routers (to be added):
   // snippets: snippetsRouter,
