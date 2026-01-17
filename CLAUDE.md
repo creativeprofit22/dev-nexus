@@ -18,7 +18,7 @@ Session-Mode: Multi-session (clear context between gaps)
 |-----|--------|--------|
 | CommandPalette | Shared UI | DONE |
 | Export PNG/SVG/PDF | Flows | NOT STARTED |
-| Live Preview (iframe) | Components | NOT STARTED |
+| Live Preview (iframe) | Components | DONE |
 | VS Code click-to-open | Structure | NOT STARTED |
 | Mentions (@project) | Notes | NOT STARTED |
 
@@ -50,7 +50,7 @@ Session-Mode: Multi-session (clear context between gaps)
 | Project Hub | 95% | 40% | Missing fancy cards |
 | Prompt Library | 75% | 40% | Missing version history, fancy UI |
 | Notes | 65% | 40% | Missing mentions, syntax highlight |
-| Component Studio | 55% | 40% | Missing live preview, props editor |
+| Component Studio | 70% | 40% | Missing props editor |
 | Flow Mapper | 55% | 40% | Missing export, animations |
 | Structure Explorer | 40% | 60% | Missing dependency graph, VS Code |
 | Shared UI | 70% | 20% | Missing CommandPalette, design system |

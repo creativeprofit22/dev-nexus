@@ -8,6 +8,7 @@
 import { useState } from "react";
 import { useComponents } from "../../hooks/useComponents";
 import { useComponentMutations } from "../../hooks/useComponentMutations";
+import { useLivePreview } from "../../hooks/useLivePreview";
 import { ComponentCard } from "../ComponentCard";
 import { CodeEditor } from "../CodeEditor";
 import { Button } from "@/shared/components/ui/Button";
@@ -22,6 +23,41 @@ import type {
 } from "../../types/component.types";
 
 type DialogMode = "create" | "edit" | null;
+
+/** Live Preview Panel for the dialog */
+function LivePreviewPanel({ code }: { code: string }) {
+  const { srcdoc, error, isLoading } = useLivePreview(code);
+
+  return (
+    <div className="space-y-2">
+      <label className="block text-sm font-medium text-[#cbd5e1]">
+        Live Preview
+      </label>
+      <div className="relative rounded-lg border border-[#212730] bg-[#0d0f13] overflow-hidden min-h-[150px]">
+        {isLoading && (
+          <div className="absolute top-2 right-2 text-xs text-[#64748b]">
+            Loading...
+          </div>
+        )}
+        {error ? (
+          <div className="flex items-center justify-center min-h-[150px] p-4">
+            <div className="text-red-400 bg-red-950/30 border border-red-900/50 rounded-lg p-3 text-xs max-w-full">
+              <p className="font-medium mb-1">Preview Error</p>
+              <p className="text-red-400/80">{error}</p>
+            </div>
+          </div>
+        ) : (
+          <iframe
+            srcDoc={srcdoc}
+            sandbox="allow-scripts"
+            className="w-full min-h-[150px] border-0 bg-[#0d0f13]"
+            title="Component Preview"
+          />
+        )}
+      </div>
+    </div>
+  );
+}
 
 const categories: ComponentCategory[] = [
   "react",
@@ -384,6 +420,9 @@ export function ComponentsView() {
               }
             />
           </div>
+
+          {/* Live Preview */}
+          {formCode.trim() && <LivePreviewPanel code={formCode} />}
 
           <div className="flex gap-3 pt-4 border-t border-[#212730]">
             <Button
