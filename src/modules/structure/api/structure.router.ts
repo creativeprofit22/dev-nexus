@@ -11,6 +11,7 @@ import {
 import { eq } from "drizzle-orm";
 import * as fs from "fs/promises";
 import * as path from "path";
+import { exec } from "child_process";
 
 /**
  * Generate a unique ID for project structures
@@ -409,5 +410,52 @@ export const structureRouter = router({
       }
 
       return result[0];
+    }),
+
+  /**
+   * Open a file in VS Code
+   *
+   * Input:
+   * - filePath: string - Absolute path to the file
+   *
+   * Output: { success: boolean }
+   *
+   * Design:
+   * 1. Validate the file path exists
+   * 2. Execute `code <filepath>` CLI command
+   * 3. Return success/failure status
+   */
+  openInVSCode: publicProcedure
+    .input(
+      z.object({
+        filePath: z.string().min(1, "File path is required"),
+      })
+    )
+    .mutation(async ({ input }) => {
+      // Validate path exists
+      try {
+        await fs.access(input.filePath);
+      } catch {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `File path "${input.filePath}" is not accessible`,
+        });
+      }
+
+      // Execute VS Code CLI
+      return new Promise<{ success: boolean }>((resolve, reject) => {
+        exec(`code "${input.filePath}"`, (error) => {
+          if (error) {
+            reject(
+              new TRPCError({
+                code: "INTERNAL_SERVER_ERROR",
+                message: `Failed to open VS Code: ${error.message}`,
+              })
+            );
+          } else {
+            resolve({ success: true });
+          }
+        });
+      });
     }),
 });

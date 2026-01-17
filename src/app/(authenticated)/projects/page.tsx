@@ -9,6 +9,7 @@ import { Button } from "@/shared/components/ui/Button";
 import { Input } from "@/shared/components/ui/Input";
 import { Dialog } from "@/shared/components/ui/Dialog";
 import { ClaudeMdEditor } from "@/modules/projects/components/ClaudeMdEditor";
+import { StructureModal } from "@/modules/structure/components/StructureModal";
 import type {
   Project,
   ProjectStatus,
@@ -27,6 +28,9 @@ export default function ProjectsPage() {
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [showFolderBrowser, setShowFolderBrowser] = useState(false);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const [structureProject, setStructureProject] = useState<Project | null>(
+    null
+  );
 
   // Form state
   const [formName, setFormName] = useState("");
@@ -122,6 +126,13 @@ export default function ProjectsPage() {
     }
   };
 
+  const handleViewStructure = (id: string) => {
+    const project = projects?.find((p) => p.id === id);
+    if (project) {
+      setStructureProject(project);
+    }
+  };
+
   const isMutating =
     createProject.isLoading ||
     updateProject.isLoading ||
@@ -199,6 +210,7 @@ export default function ProjectsPage() {
               onEdit={handleOpenEdit}
               onDelete={handleDelete}
               onClick={handleProjectClick}
+              onViewStructure={handleViewStructure}
             />
           ))}
         </div>
@@ -366,6 +378,18 @@ export default function ProjectsPage() {
           </div>
         )}
       </Dialog>
+
+      {/* Structure Explorer Modal */}
+      {structureProject && (
+        <StructureModal
+          key={structureProject.id}
+          open={structureProject !== null}
+          onOpenChange={(open) => !open && setStructureProject(null)}
+          projectId={structureProject.id}
+          projectName={structureProject.name}
+          projectPath={structureProject.pathWSL}
+        />
+      )}
     </div>
   );
 }

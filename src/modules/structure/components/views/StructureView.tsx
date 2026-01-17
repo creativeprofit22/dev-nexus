@@ -70,7 +70,7 @@ export function StructureView() {
             <div>
               <h1 className="text-lg font-semibold">Structure Explorer</h1>
               <p className="text-xs text-[#94a3b8]">
-                3D visualization of project structure
+                Browse project files and folders
               </p>
             </div>
           </div>
@@ -174,7 +174,7 @@ export function StructureView() {
         </div>
       )}
 
-      {/* 3D Canvas */}
+      {/* Tree View */}
       <div className="flex-1 min-h-0">
         {!effectiveProjectId ? (
           <div className="flex items-center justify-center h-full bg-[#0f1115]">

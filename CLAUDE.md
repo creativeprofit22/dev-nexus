@@ -17,7 +17,7 @@ Session-Mode: Multi-session (clear context between gaps)
 | Gap | Module | Status |
 |-----|--------|--------|
 | CommandPalette | Shared UI | DONE |
-| Export PNG/SVG/PDF | Flows | NOT STARTED |
+| Export PNG/SVG/PDF | Flows | DONE |
 | Live Preview (iframe) | Components | DONE |
 | VS Code click-to-open | Structure | NOT STARTED |
 | Mentions (@project) | Notes | NOT STARTED |

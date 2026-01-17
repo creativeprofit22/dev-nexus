@@ -18,6 +18,7 @@ interface ProjectCardProps {
   onEdit?: (id: string) => void;
   onDelete?: (id: string) => void;
   onClick?: (id: string) => void;
+  onViewStructure?: (id: string) => void;
 }
 
 const statusConfig = {
@@ -68,6 +69,7 @@ export function ProjectCard({
   onEdit,
   onDelete,
   onClick,
+  onViewStructure,
 }: ProjectCardProps) {
   const status = statusConfig[project.status];
   const visibleTechStack = project.techStack.slice(0, 5);
@@ -147,6 +149,11 @@ export function ProjectCard({
       setErrorMessage(`Failed to open terminal: ${result.message}`);
       setTimeout(() => setErrorMessage(null), 3000);
     }
+  };
+
+  const handleViewStructure = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onViewStructure?.(project.id);
   };
 
   const handleCopyPath = async (format: PathFormat) => {
@@ -265,6 +272,18 @@ export function ProjectCard({
         >
           {openTerminal.state.isLoading ? "..." : "Terminal"}
         </Button>
+
+        {/* View Structure */}
+        {onViewStructure && (
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={handleViewStructure}
+            aria-label="View project structure in 3D"
+          >
+            Structure
+          </Button>
+        )}
 
         {/* Copy Path Dropdown */}
         <div className="relative" ref={copyMenuRef}>
