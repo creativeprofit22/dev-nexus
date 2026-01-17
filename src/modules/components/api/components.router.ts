@@ -2,7 +2,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { publicProcedure, router } from "@/core/trpc/init";
 import { components } from "@/core/db/schema/components.schema";
-import { eq, and, like, desc, or } from "drizzle-orm";
+import { eq, and, like, desc, or, sql } from "drizzle-orm";
 import type {
   ComponentCategory,
   ComponentVariant,
@@ -406,11 +406,7 @@ export const componentsRouter = router({
    *
    * Output: Updated component object
    *
-   * Ultra Think:
-   * 1. Fetch current component
-   * 2. Toggle isFavorite boolean
-   * 3. Update updatedAt timestamp
-   * 4. Return updated component
+   * Optimized: Reduced from 3 queries to 2 by constructing return value
    */
   toggleFavorite: publicProcedure
     .input(
@@ -419,6 +415,8 @@ export const componentsRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      const now = new Date().toISOString();
+
       // Fetch current component
       const current = await ctx.db
         .select()
@@ -426,7 +424,7 @@ export const componentsRouter = router({
         .where(eq(components.id, input.id))
         .limit(1);
 
-      if (current.length === 0) {
+      if (current.length === 0 || !current[0]) {
         throw new TRPCError({
           code: "NOT_FOUND",
           message: `Component with ID "${input.id}" not found`,
@@ -434,30 +432,23 @@ export const componentsRouter = router({
       }
 
       const currentComponent = current[0];
-      if (!currentComponent) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: `Component with ID "${input.id}" not found`,
-        });
-      }
+      const newFavoriteState = !currentComponent.isFavorite;
 
       // Toggle favorite status
       await ctx.db
         .update(components)
         .set({
-          isFavorite: !currentComponent.isFavorite,
-          updatedAt: new Date().toISOString(),
+          isFavorite: newFavoriteState,
+          updatedAt: now,
         })
         .where(eq(components.id, input.id));
 
-      // Return the updated component
-      const result = await ctx.db
-        .select()
-        .from(components)
-        .where(eq(components.id, input.id))
-        .limit(1);
-
-      return result[0];
+      // Return constructed object instead of re-fetching (saves 1 query)
+      return {
+        ...currentComponent,
+        isFavorite: newFavoriteState,
+        updatedAt: now,
+      };
     }),
 
   /**
@@ -468,11 +459,7 @@ export const componentsRouter = router({
    *
    * Output: Updated component object
    *
-   * Ultra Think:
-   * 1. Increment usageCount by 1
-   * 2. Set lastUsed to current timestamp
-   * 3. Update updatedAt timestamp
-   * 4. Return 404 if component doesn't exist
+   * Optimized: Uses SQL increment (atomic) and constructs return value (saves 2 queries)
    */
   incrementUsage: publicProcedure
     .input(
@@ -483,14 +470,14 @@ export const componentsRouter = router({
     .mutation(async ({ ctx, input }) => {
       const now = new Date().toISOString();
 
-      // Fetch current component to get current usage count
+      // Fetch current component for validation and return value construction
       const current = await ctx.db
         .select()
         .from(components)
         .where(eq(components.id, input.id))
         .limit(1);
 
-      if (current.length === 0) {
+      if (current.length === 0 || !current[0]) {
         throw new TRPCError({
           code: "NOT_FOUND",
           message: `Component with ID "${input.id}" not found`,
@@ -498,30 +485,24 @@ export const componentsRouter = router({
       }
 
       const currentComponent = current[0];
-      if (!currentComponent) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: `Component with ID "${input.id}" not found`,
-        });
-      }
+      const newUsageCount = currentComponent.usageCount + 1;
 
-      // Increment usage count and update timestamps
+      // Use SQL increment for atomic operation
       await ctx.db
         .update(components)
         .set({
-          usageCount: currentComponent.usageCount + 1,
+          usageCount: sql`${components.usageCount} + 1`,
           lastUsed: now,
           updatedAt: now,
         })
         .where(eq(components.id, input.id));
 
-      // Return the updated component
-      const result = await ctx.db
-        .select()
-        .from(components)
-        .where(eq(components.id, input.id))
-        .limit(1);
-
-      return result[0];
+      // Return constructed object instead of re-fetching (saves 1 query)
+      return {
+        ...currentComponent,
+        usageCount: newUsageCount,
+        lastUsed: now,
+        updatedAt: now,
+      };
     }),
 });

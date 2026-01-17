@@ -48,7 +48,9 @@ export function ComponentPreview({ component }: ComponentPreviewProps) {
           </span>
           <button
             onClick={() => {
-              navigator.clipboard.writeText(displayCode);
+              navigator.clipboard.writeText(displayCode).catch((err) => {
+                console.error("Failed to copy to clipboard:", err);
+              });
             }}
             className="text-xs text-[#64748b] hover:text-[#cbd5e1] transition-colors flex items-center gap-1"
             aria-label="Copy code"

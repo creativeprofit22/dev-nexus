@@ -13,6 +13,7 @@ import { CodeEditor } from "../CodeEditor";
 import { Button } from "@/shared/components/ui/Button";
 import { Input } from "@/shared/components/ui/Input";
 import { Dialog } from "@/shared/components/ui/Dialog";
+import { ConfirmDialog } from "@/shared/components/ui/ConfirmDialog";
 import type {
   ComponentCategory,
   CreateComponentInput,
@@ -40,6 +41,7 @@ export function ComponentsView() {
   const [editingComponent, setEditingComponent] = useState<Component | null>(
     null
   );
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
   // Form state
   const [formName, setFormName] = useState("");
@@ -142,8 +144,13 @@ export function ComponentsView() {
   };
 
   const handleDelete = (id: string) => {
-    if (confirm("Are you sure you want to delete this component?")) {
-      deleteComponent.mutate({ id });
+    setDeleteConfirmId(id);
+  };
+
+  const confirmDelete = () => {
+    if (deleteConfirmId) {
+      deleteComponent.mutate({ id: deleteConfirmId });
+      setDeleteConfirmId(null);
     }
   };
 
@@ -398,6 +405,18 @@ export function ComponentsView() {
           </div>
         </form>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        open={deleteConfirmId !== null}
+        onOpenChange={(open) => !open && setDeleteConfirmId(null)}
+        title="Delete Component"
+        description="Are you sure you want to delete this component? This action cannot be undone."
+        confirmLabel="Delete"
+        onConfirm={confirmDelete}
+        variant="danger"
+        isLoading={deleteComponent.isLoading}
+      />
     </div>
   );
 }

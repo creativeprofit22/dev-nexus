@@ -9,6 +9,7 @@ import { useState, useRef, useEffect } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { Card } from "@/shared/components/ui/Card";
 import { Button } from "@/shared/components/ui/Button";
+import { ConfirmDialog } from "@/shared/components/ui/ConfirmDialog";
 import { useProjectActions } from "../../hooks/useProjectActions";
 import type { Project, PathFormat } from "../../types/project.types";
 
@@ -78,6 +79,8 @@ export function ProjectCard({
   // Copy dropdown state
   const [showCopyMenu, setShowCopyMenu] = useState(false);
   const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const copyMenuRef = useRef<HTMLDivElement>(null);
 
   // Close copy menu when clicking outside
@@ -112,14 +115,14 @@ export function ProjectCard({
 
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDelete = () => {
     if (onDelete) {
-      const confirmed = window.confirm(
-        `Are you sure you want to delete "${project.name}"? This action cannot be undone.`
-      );
-      if (confirmed) {
-        onDelete(project.id);
-      }
+      onDelete(project.id);
     }
+    setShowDeleteConfirm(false);
   };
 
   const handleOpenVSCode = async (e: React.MouseEvent) => {
@@ -129,7 +132,8 @@ export function ProjectCard({
       pathWSL: project.pathWSL,
     });
     if (!result.success) {
-      alert(`Failed to open VS Code: ${result.message}`);
+      setErrorMessage(`Failed to open VS Code: ${result.message}`);
+      setTimeout(() => setErrorMessage(null), 3000);
     }
   };
 
@@ -140,7 +144,8 @@ export function ProjectCard({
       pathWSL: project.pathWSL,
     });
     if (!result.success) {
-      alert(`Failed to open terminal: ${result.message}`);
+      setErrorMessage(`Failed to open terminal: ${result.message}`);
+      setTimeout(() => setErrorMessage(null), 3000);
     }
   };
 
@@ -152,7 +157,8 @@ export function ProjectCard({
       setCopyFeedback(format === "wsl" ? "WSL" : "Win");
       setTimeout(() => setCopyFeedback(null), 1500);
     } else {
-      alert(`Failed to copy: ${result.message}`);
+      setErrorMessage(`Failed to copy: ${result.message}`);
+      setTimeout(() => setErrorMessage(null), 3000);
     }
   };
 
@@ -272,9 +278,9 @@ export function ProjectCard({
             {copyFeedback ? `Copied ${copyFeedback}!` : "Copy Path"}
           </Button>
           {showCopyMenu && (
-            <div className="absolute bottom-full left-0 mb-1 bg-[#1a1f2e] border border-[#2d3548] rounded-md shadow-lg z-10 min-w-[120px]">
+            <div className="absolute bottom-full left-0 mb-1 bg-[#181c24] border border-[#212730] rounded-md shadow-lg z-10 min-w-[120px]">
               <button
-                className="w-full px-3 py-2 text-left text-sm text-[#cbd5e1] hover:bg-[#2d3548] rounded-t-md"
+                className="w-full px-3 py-2 text-left text-sm text-[#cbd5e1] hover:bg-[#212730] rounded-t-md"
                 onClick={(e) => {
                   e.stopPropagation();
                   handleCopyPath("wsl");
@@ -283,7 +289,7 @@ export function ProjectCard({
                 WSL Path
               </button>
               <button
-                className="w-full px-3 py-2 text-left text-sm text-[#cbd5e1] hover:bg-[#2d3548] rounded-b-md border-t border-[#2d3548]"
+                className="w-full px-3 py-2 text-left text-sm text-[#cbd5e1] hover:bg-[#212730] rounded-b-md border-t border-[#212730]"
                 onClick={(e) => {
                   e.stopPropagation();
                   handleCopyPath("windows");
@@ -317,6 +323,24 @@ export function ProjectCard({
           </Button>
         )}
       </div>
+
+      {/* Error Toast */}
+      {errorMessage && (
+        <div className="absolute bottom-full left-0 right-0 mb-2 p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
+          {errorMessage}
+        </div>
+      )}
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        open={showDeleteConfirm}
+        onOpenChange={setShowDeleteConfirm}
+        title="Delete Project"
+        description={`Are you sure you want to delete "${project.name}"? This action cannot be undone.`}
+        confirmLabel="Delete"
+        onConfirm={confirmDelete}
+        variant="danger"
+      />
     </Card>
   );
 }

@@ -50,10 +50,11 @@ export function ComponentCard({
         </h3>
         <button
           onClick={() => onToggleFavorite(component.id)}
-          className="flex-shrink-0 ml-2 text-[#64748b] hover:text-yellow-500 transition-colors"
+          className="flex-shrink-0 ml-2 text-[#64748b] hover:text-yellow-500 transition-colors focus:outline-none focus:ring-2 focus:ring-sky-500 rounded"
           aria-label={
             component.isFavorite ? "Remove from favorites" : "Add to favorites"
           }
+          aria-pressed={component.isFavorite}
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -93,7 +94,7 @@ export function ComponentCard({
           {visibleTags.map((tag) => (
             <span
               key={tag}
-              className="px-2 py-0.5 text-xs rounded bg-[#212730] text-[#94a3b8] border border-[#313844]"
+              className="px-2 py-0.5 text-xs rounded bg-[#212730] text-[#94a3b8] border border-[#2d3548]"
             >
               {tag}
             </span>

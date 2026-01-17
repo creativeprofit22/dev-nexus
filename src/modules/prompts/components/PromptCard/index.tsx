@@ -9,6 +9,7 @@ import { useState } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { Card } from "@/shared/components/ui/Card";
 import { Button } from "@/shared/components/ui/Button";
+import { ConfirmDialog } from "@/shared/components/ui/ConfirmDialog";
 import { usePromptMutations } from "../../hooks/usePromptMutations";
 import type { Prompt, PromptCategory } from "../../types/prompt.types";
 
@@ -75,6 +76,7 @@ const highlightVariables = (content: string) =>
 export function PromptCard({ prompt, onEdit, onClick }: PromptCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [copyFeedback, setCopyFeedback] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const { deletePrompt, duplicatePrompt } = usePromptMutations();
 
   const category = categoryConfig[prompt.category as PromptCategory];
@@ -97,16 +99,24 @@ export function PromptCard({ prompt, onEdit, onClick }: PromptCardProps) {
 
   const handleCopy = async (e: React.MouseEvent) =>
     stopProp(e, async () => {
-      await navigator.clipboard.writeText(prompt.content);
-      setCopyFeedback(true);
-      setTimeout(() => setCopyFeedback(false), 2000);
+      try {
+        await navigator.clipboard.writeText(prompt.content);
+        setCopyFeedback(true);
+        setTimeout(() => setCopyFeedback(false), 2000);
+      } catch (err) {
+        console.error("Failed to copy to clipboard:", err);
+      }
     });
 
   const handleDelete = (e: React.MouseEvent) =>
     stopProp(e, () => {
-      if (window.confirm(`Delete "${prompt.title}"? This cannot be undone.`))
-        deletePrompt.mutate({ id: prompt.id });
+      setShowDeleteConfirm(true);
     });
+
+  const confirmDelete = () => {
+    deletePrompt.mutate({ id: prompt.id });
+    setShowDeleteConfirm(false);
+  };
 
   return (
     <Card
@@ -158,8 +168,12 @@ export function PromptCard({ prompt, onEdit, onClick }: PromptCardProps) {
 
       {shouldTruncate && !onClick && (
         <button
-          className="text-xs text-sky-400 hover:text-sky-300 self-start"
+          className="text-xs text-sky-400 hover:text-sky-300 self-start focus:outline-none focus:ring-2 focus:ring-sky-500 rounded px-1"
           onClick={(e) => stopProp(e, () => setIsExpanded(!isExpanded))}
+          aria-expanded={isExpanded}
+          aria-label={
+            isExpanded ? "Collapse prompt content" : "Expand prompt content"
+          }
         >
           {isExpanded ? "Show less" : "Show more"}
         </button>
@@ -216,7 +230,11 @@ export function PromptCard({ prompt, onEdit, onClick }: PromptCardProps) {
           variant="secondary"
           size="sm"
           onClick={(e) =>
-            stopProp(e, () => duplicatePrompt.mutateAsync({ id: prompt.id }))
+            stopProp(e, () => {
+              duplicatePrompt.mutateAsync({ id: prompt.id }).catch((err) => {
+                console.error("Failed to duplicate prompt:", err);
+              });
+            })
           }
           disabled={duplicatePrompt.isLoading}
         >
@@ -232,6 +250,18 @@ export function PromptCard({ prompt, onEdit, onClick }: PromptCardProps) {
           Delete
         </Button>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        open={showDeleteConfirm}
+        onOpenChange={setShowDeleteConfirm}
+        title="Delete Prompt"
+        description={`Are you sure you want to delete "${prompt.title}"? This action cannot be undone.`}
+        confirmLabel="Delete"
+        onConfirm={confirmDelete}
+        variant="danger"
+        isLoading={deletePrompt.isLoading}
+      />
     </Card>
   );
 }

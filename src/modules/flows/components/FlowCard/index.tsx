@@ -19,6 +19,7 @@ import {
   MousePointerClick,
   Globe,
 } from "lucide-react";
+import { ConfirmDialog } from "@/shared/components/ui/ConfirmDialog";
 import type { Flow } from "../../types/flow.types";
 
 interface FlowCardProps {
@@ -51,6 +52,7 @@ export function FlowCard({
   onClick,
 }: FlowCardProps) {
   const [showMenu, setShowMenu] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const updatedDate = formatDistanceToNow(new Date(flow.updatedAt), {
     addSuffix: true,
@@ -87,11 +89,14 @@ export function FlowCard({
 
   const handleDelete = (e: React.MouseEvent) =>
     stopProp(e, () => {
-      if (window.confirm(`Delete "${flow.name}"? This cannot be undone.`)) {
-        onDelete?.(flow.id);
-      }
       setShowMenu(false);
+      setShowDeleteConfirm(true);
     });
+
+  const confirmDelete = () => {
+    onDelete?.(flow.id);
+    setShowDeleteConfirm(false);
+  };
 
   const handleMenuToggle = (e: React.MouseEvent) =>
     stopProp(e, () => setShowMenu(!showMenu));
@@ -259,6 +264,17 @@ export function FlowCard({
           </Button>
         )}
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        open={showDeleteConfirm}
+        onOpenChange={setShowDeleteConfirm}
+        title="Delete Flow"
+        description={`Are you sure you want to delete "${flow.name}"? This action cannot be undone.`}
+        confirmLabel="Delete"
+        onConfirm={confirmDelete}
+        variant="danger"
+      />
     </Card>
   );
 }

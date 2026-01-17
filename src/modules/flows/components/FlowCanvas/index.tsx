@@ -10,6 +10,7 @@ import {
   useRef,
   useState,
   useEffect,
+  useLayoutEffect,
   type DragEvent,
 } from "react";
 import {
@@ -71,20 +72,28 @@ export function FlowCanvas({
   );
   const [edges, setEdges, handleEdgesChange] = useEdgesState(initialEdges);
 
-  // Sync nodes changes to parent
+  // Use refs to avoid circular dependency in useEffect
+  // This prevents the eslint-disable pattern and infinite re-renders
+  const onNodesChangeRef = useRef(onNodesChangeProp);
+  const onEdgesChangeRef = useRef(onEdgesChangeProp);
+
+  // Keep refs in sync with props
+  useLayoutEffect(() => {
+    onNodesChangeRef.current = onNodesChangeProp;
+  }, [onNodesChangeProp]);
+
+  useLayoutEffect(() => {
+    onEdgesChangeRef.current = onEdgesChangeProp;
+  }, [onEdgesChangeProp]);
+
+  // Sync nodes changes to parent (using ref to avoid dependency issues)
   useEffect(() => {
-    if (onNodesChangeProp) {
-      onNodesChangeProp(nodes as FlowNode[]);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    onNodesChangeRef.current?.(nodes as FlowNode[]);
   }, [nodes]);
 
-  // Sync edges changes to parent
+  // Sync edges changes to parent (using ref to avoid dependency issues)
   useEffect(() => {
-    if (onEdgesChangeProp) {
-      onEdgesChangeProp(edges);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    onEdgesChangeRef.current?.(edges);
   }, [edges]);
 
   // Handle new connections

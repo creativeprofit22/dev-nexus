@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -16,7 +17,7 @@ interface NavItem {
   order: number;
 }
 
-// Hardcoded navigation for Phase 1
+// Navigation items defined outside component to avoid recreation
 const navigationItems: NavItem[] = [
   { id: "projects", name: "Projects", icon: "📦", href: "/projects", order: 1 },
   { id: "prompts", name: "Prompts", icon: "💬", href: "/prompts", order: 2 },
@@ -32,7 +33,14 @@ const navigationItems: NavItem[] = [
   { id: "settings", name: "Settings", icon: "⚙️", href: "/settings", order: 6 },
 ];
 
-export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
+/**
+ * Sidebar - Navigation panel
+ * Memoized to prevent re-renders when parent state changes
+ */
+export const Sidebar = memo(function Sidebar({
+  collapsed,
+  onToggleCollapse,
+}: SidebarProps) {
   const pathname = usePathname();
 
   return (
@@ -50,15 +58,16 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
         )}
         <button
           onClick={onToggleCollapse}
-          className="rounded-lg p-2 hover:bg-accent transition-colors"
+          className="rounded-lg p-2 hover:bg-accent transition-colors focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 focus:ring-offset-[#14161c]"
           aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          aria-expanded={!collapsed}
         >
           {collapsed ? "→" : "←"}
         </button>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto p-2">
+      <nav className="flex-1 overflow-y-auto p-2" aria-label="Main navigation">
         <ul className="space-y-1">
           {navigationItems.map((item) => {
             const isActive = pathname?.startsWith(item.href);
@@ -66,12 +75,13 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
               <li key={item.id}>
                 <Link
                   href={item.href}
-                  className={`flex items-center gap-3 rounded-lg px-3 py-2 transition-colors ${
+                  className={`flex items-center gap-3 rounded-lg px-3 py-2 transition-colors focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 focus:ring-offset-[#14161c] ${
                     isActive
                       ? "bg-primary text-primary-foreground"
                       : "hover:bg-accent hover:text-accent-foreground"
                   }`}
                   title={collapsed ? item.name : undefined}
+                  aria-current={isActive ? "page" : undefined}
                 >
                   <span className="text-xl flex-shrink-0">{item.icon}</span>
                   {!collapsed && (
@@ -106,4 +116,6 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
       </div>
     </aside>
   );
-}
+});
+
+Sidebar.displayName = "Sidebar";

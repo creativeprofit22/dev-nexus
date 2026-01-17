@@ -9,6 +9,7 @@ import { useState } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { Card } from "@/shared/components/ui/Card";
 import { Button } from "@/shared/components/ui/Button";
+import { ConfirmDialog } from "@/shared/components/ui/ConfirmDialog";
 import { useNoteMutations } from "../../hooks/useNoteMutations";
 import type { NoteSelect } from "../../types/note.types";
 
@@ -59,6 +60,7 @@ const extractTextContent = (content: string): string => {
 
 export function NoteCard({ note, onEdit, onClick }: NoteCardProps) {
   const [copyFeedback, setCopyFeedback] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const { deleteNote, duplicateNote, togglePin } = useNoteMutations();
 
   const plainTextContent = extractTextContent(note.content);
@@ -87,16 +89,24 @@ export function NoteCard({ note, onEdit, onClick }: NoteCardProps) {
 
   const handleCopy = async (e: React.MouseEvent) =>
     stopProp(e, async () => {
-      await navigator.clipboard.writeText(plainTextContent);
-      setCopyFeedback(true);
-      setTimeout(() => setCopyFeedback(false), 2000);
+      try {
+        await navigator.clipboard.writeText(plainTextContent);
+        setCopyFeedback(true);
+        setTimeout(() => setCopyFeedback(false), 2000);
+      } catch (err) {
+        console.error("Failed to copy to clipboard:", err);
+      }
     });
 
   const handleDelete = (e: React.MouseEvent) =>
     stopProp(e, () => {
-      if (window.confirm(`Delete "${note.title}"? This cannot be undone.`))
-        deleteNote.mutate({ id: note.id });
+      setShowDeleteConfirm(true);
     });
+
+  const confirmDelete = () => {
+    deleteNote.mutate({ id: note.id });
+    setShowDeleteConfirm(false);
+  };
 
   const handleTogglePin = (e: React.MouseEvent) =>
     stopProp(e, () => {
@@ -199,7 +209,11 @@ export function NoteCard({ note, onEdit, onClick }: NoteCardProps) {
           variant="secondary"
           size="sm"
           onClick={(e) =>
-            stopProp(e, () => duplicateNote.mutateAsync({ id: note.id }))
+            stopProp(e, () => {
+              duplicateNote.mutateAsync({ id: note.id }).catch((err) => {
+                console.error("Failed to duplicate note:", err);
+              });
+            })
           }
           disabled={duplicateNote.isLoading}
         >
@@ -215,6 +229,18 @@ export function NoteCard({ note, onEdit, onClick }: NoteCardProps) {
           Delete
         </Button>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        open={showDeleteConfirm}
+        onOpenChange={setShowDeleteConfirm}
+        title="Delete Note"
+        description={`Are you sure you want to delete "${note.title}"? This action cannot be undone.`}
+        confirmLabel="Delete"
+        onConfirm={confirmDelete}
+        variant="danger"
+        isLoading={deleteNote.isLoading}
+      />
     </Card>
   );
 }

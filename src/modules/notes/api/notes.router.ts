@@ -356,14 +356,17 @@ export const notesRouter = router({
         updatedAt: now,
       });
 
-      // Return the duplicate note
-      const result = await ctx.db
-        .select()
-        .from(notes)
-        .where(eq(notes.id, id))
-        .limit(1);
-
-      return result[0]!;
+      // Return constructed duplicate instead of re-fetching (saves 1 query)
+      return {
+        id,
+        title: `${originalNote.title} (Copy)`,
+        content: originalNote.content,
+        tags: originalNote.tags,
+        projectId: originalNote.projectId,
+        isPinned: false,
+        createdAt: now,
+        updatedAt: now,
+      };
     }),
 
   /**
@@ -373,6 +376,8 @@ export const notesRouter = router({
    * - id: string - Note ID
    *
    * Output: Updated note object with new isPinned status
+   *
+   * Optimized: Reduced from 3 queries to 2 by constructing return value
    */
   togglePin: protectedProcedure
     .input(
@@ -381,6 +386,8 @@ export const notesRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      const now = new Date().toISOString();
+
       // Fetch current note to get isPinned status
       const current = await ctx.db
         .select()
@@ -388,14 +395,14 @@ export const notesRouter = router({
         .where(eq(notes.id, input.id))
         .limit(1);
 
-      if (current.length === 0) {
+      if (current.length === 0 || !current[0]) {
         throw new TRPCError({
           code: "NOT_FOUND",
           message: `Note with ID "${input.id}" not found`,
         });
       }
 
-      const currentNote = current[0]!;
+      const currentNote = current[0];
       const newPinnedStatus = !currentNote.isPinned;
 
       // Update isPinned status
@@ -403,17 +410,15 @@ export const notesRouter = router({
         .update(notes)
         .set({
           isPinned: newPinnedStatus,
-          updatedAt: new Date().toISOString(),
+          updatedAt: now,
         })
         .where(eq(notes.id, input.id));
 
-      // Return updated note
-      const result = await ctx.db
-        .select()
-        .from(notes)
-        .where(eq(notes.id, input.id))
-        .limit(1);
-
-      return result[0]!;
+      // Return constructed object instead of re-fetching (saves 1 query)
+      return {
+        ...currentNote,
+        isPinned: newPinnedStatus,
+        updatedAt: now,
+      };
     }),
 });

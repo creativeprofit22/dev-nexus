@@ -78,7 +78,8 @@ export function FileTreeNode({
         {isDirectory ? (
           <boxGeometry args={[baseSize, baseSize, baseSize]} />
         ) : (
-          <sphereGeometry args={[baseSize, 16, 16]} />
+          // Reduced tessellation: 8x8 (128 vertices) vs 16x16 (512 vertices) - 75% reduction
+          <sphereGeometry args={[baseSize, 8, 8]} />
         )}
         <meshStandardMaterial
           color={color}

@@ -110,6 +110,8 @@ export async function openTerminal(pathWSL: string): Promise<CommandResult> {
     validatePath(pathWSL);
 
     return new Promise((resolve) => {
+      let resolved = false;
+
       // Try Windows Terminal first (wt.exe) with WSL starting in the directory
       // The -d flag sets the starting directory
       const child = spawn("wt.exe", ["-d", pathWSL], {
@@ -140,25 +142,35 @@ export async function openTerminal(pathWSL: string): Promise<CommandResult> {
         fallback.unref();
 
         fallback.on("error", (err) => {
-          resolve({
-            success: false,
-            message: `Failed to open terminal: ${err.message}`,
-          });
+          if (!resolved) {
+            resolved = true;
+            resolve({
+              success: false,
+              message: `Failed to open terminal: ${err.message}`,
+            });
+          }
         });
 
         setTimeout(() => {
+          if (!resolved) {
+            resolved = true;
+            resolve({
+              success: true,
+              message: `Opened terminal in: ${pathWSL}`,
+            });
+          }
+        }, 100);
+      });
+
+      // Success path: wt.exe launched without error
+      setTimeout(() => {
+        if (!resolved) {
+          resolved = true;
           resolve({
             success: true,
             message: `Opened terminal in: ${pathWSL}`,
           });
-        }, 100);
-      });
-
-      setTimeout(() => {
-        resolve({
-          success: true,
-          message: `Opened terminal in: ${pathWSL}`,
-        });
+        }
       }, 100);
     });
   } catch (error) {

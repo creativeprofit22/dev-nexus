@@ -75,7 +75,13 @@ export function NoteEditor({
   const editor = useEditor({
     extensions: [StarterKit],
     content: note?.content
-      ? JSON.parse(note.content)
+      ? (() => {
+          try {
+            return JSON.parse(note.content);
+          } catch {
+            return { type: "doc", content: [] };
+          }
+        })()
       : { type: "doc", content: [] },
     editable: !isLoading,
     editorProps: {

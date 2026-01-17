@@ -106,20 +106,20 @@ export function Dialog({
         className="fixed left-1/2 top-1/2 z-50 w-full max-w-2xl -translate-x-1/2 -translate-y-1/2 animate-scale-in px-4"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="rounded-xl border border-accent bg-card p-6 shadow-2xl">
+        <div className="rounded-xl border border-[#212730] bg-[#181c24] p-6 shadow-2xl">
           {/* Header */}
           <div className="mb-4 flex items-start justify-between">
             <div className="flex-1">
               <h2
                 id="dialog-title"
-                className="text-xl font-bold text-foreground"
+                className="text-xl font-bold text-[#cbd5e1]"
               >
                 {title}
               </h2>
               {description && (
                 <p
                   id="dialog-description"
-                  className="mt-1 text-sm text-muted-foreground"
+                  className="mt-1 text-sm text-[#94a3b8]"
                 >
                   {description}
                 </p>
@@ -129,7 +129,7 @@ export function Dialog({
             {/* Close Button */}
             <button
               onClick={() => onOpenChange(false)}
-              className="ml-4 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              className="ml-4 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg text-[#64748b] transition-colors hover:bg-[#212730] hover:text-[#cbd5e1] focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 focus:ring-offset-[#181c24]"
               aria-label="Close dialog"
             >
               <svg
@@ -150,7 +150,7 @@ export function Dialog({
           </div>
 
           {/* Content */}
-          <div className="text-foreground">{children}</div>
+          <div className="text-[#cbd5e1]">{children}</div>
         </div>
       </div>
 
