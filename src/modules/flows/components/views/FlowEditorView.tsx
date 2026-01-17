@@ -7,11 +7,22 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useFlow } from "../../hooks/useFlow";
 import { useFlowMutations } from "../../hooks/useFlowMutations";
+import { useFlowExport, type ExportFormat } from "../../hooks/useFlowExport";
 import { FlowCanvas, type FlowNode } from "../FlowCanvas";
 import { Button } from "@/shared/components/ui/Button";
 import { Input } from "@/shared/components/ui/Input";
-import { ArrowLeft, Check, Loader2, AlertCircle } from "lucide-react";
-import type { Edge, Viewport } from "@xyflow/react";
+import {
+  ArrowLeft,
+  Check,
+  Loader2,
+  AlertCircle,
+  Download,
+  Image as ImageIcon,
+  FileCode,
+  FileText,
+  ChevronDown,
+} from "lucide-react";
+import type { Edge, Viewport, ReactFlowInstance } from "@xyflow/react";
 import type {
   ReactFlowNode,
   ReactFlowEdge,
@@ -39,6 +50,25 @@ export function FlowEditorView({ flowId }: FlowEditorViewProps) {
   const pendingNodesRef = useRef<FlowNode[] | null>(null);
   const pendingEdgesRef = useRef<Edge[] | null>(null);
   const pendingViewportRef = useRef<Viewport | null>(null);
+
+  // Export functionality
+  const flowContainerRef = useRef<HTMLDivElement | null>(null);
+  const [reactFlowInstance, setReactFlowInstance] =
+    useState<ReactFlowInstance | null>(null);
+  const [showExportMenu, setShowExportMenu] = useState(false);
+  const {
+    exportFlow,
+    isExporting,
+    error: exportError,
+  } = useFlowExport(reactFlowInstance, flowContainerRef);
+
+  const handleExport = useCallback(
+    async (format: ExportFormat) => {
+      setShowExportMenu(false);
+      await exportFlow(format, { filename: flow?.name || "flow-export" });
+    },
+    [exportFlow, flow?.name]
+  );
 
   // Store flow edges/nodes in refs for use in callbacks without triggering re-renders
   const flowEdgesRef = useRef<ReactFlowEdge[] | undefined>(undefined);
@@ -287,8 +317,70 @@ export function FlowEditorView({ flowId }: FlowEditorViewProps) {
           )}
         </div>
 
-        {/* Right: Save Status */}
+        {/* Right: Export and Save Status */}
         <div className="flex items-center gap-3">
+          {/* Export Dropdown */}
+          <div className="relative">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowExportMenu(!showExportMenu)}
+              disabled={isExporting}
+              className="gap-2"
+            >
+              {isExporting ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Download className="w-4 h-4" />
+              )}
+              Export
+              <ChevronDown className="w-3 h-3" />
+            </Button>
+
+            {showExportMenu && (
+              <>
+                {/* Backdrop to close menu */}
+                <div
+                  className="fixed inset-0 z-10"
+                  onClick={() => setShowExportMenu(false)}
+                />
+                {/* Dropdown menu */}
+                <div className="absolute right-0 top-full mt-1 z-20 bg-[#181c24] border border-[#212730] rounded-lg shadow-lg py-1 min-w-[140px]">
+                  <button
+                    onClick={() => handleExport("png")}
+                    className="w-full flex items-center gap-3 px-3 py-2 text-sm text-[#e2e8f0] hover:bg-[#212730] transition-colors"
+                  >
+                    <ImageIcon className="w-4 h-4 text-sky-400" />
+                    PNG Image
+                  </button>
+                  <button
+                    onClick={() => handleExport("svg")}
+                    className="w-full flex items-center gap-3 px-3 py-2 text-sm text-[#e2e8f0] hover:bg-[#212730] transition-colors"
+                  >
+                    <FileCode className="w-4 h-4 text-emerald-400" />
+                    SVG Vector
+                  </button>
+                  <button
+                    onClick={() => handleExport("pdf")}
+                    className="w-full flex items-center gap-3 px-3 py-2 text-sm text-[#e2e8f0] hover:bg-[#212730] transition-colors"
+                  >
+                    <FileText className="w-4 h-4 text-red-400" />
+                    PDF Document
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Export Error */}
+          {exportError && (
+            <div className="flex items-center gap-2 text-sm text-red-400">
+              <AlertCircle className="w-4 h-4" />
+              <span>Export failed</span>
+            </div>
+          )}
+
+          {/* Save Status */}
           {saveStatus === "saving" && (
             <div className="flex items-center gap-2 text-sm text-[#94a3b8]">
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -319,6 +411,8 @@ export function FlowEditorView({ flowId }: FlowEditorViewProps) {
           onNodesChange={handleNodesChange}
           onEdgesChange={handleEdgesChange}
           onViewportChange={handleViewportChange}
+          onReactFlowInit={setReactFlowInstance}
+          containerRef={flowContainerRef}
         />
       </div>
     </div>

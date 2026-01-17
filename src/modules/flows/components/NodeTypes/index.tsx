@@ -51,18 +51,36 @@ function BaseNode({
         ${selected ? "shadow-xl" : ""}
       `}
     >
+      {/* Top handle */}
       <Handle
         type="target"
         position={Position.Top}
+        id="top"
+        className="!w-3 !h-3 !border-2 !border-[#212730] !bg-[#181c24]"
+      />
+      {/* Left handle */}
+      <Handle
+        type="target"
+        position={Position.Left}
+        id="left"
         className="!w-3 !h-3 !border-2 !border-[#212730] !bg-[#181c24]"
       />
       <div className="flex items-start gap-3">
         <div className={`${accentColor} mt-0.5`}>{icon}</div>
         <div className="flex-1 min-w-0">{children}</div>
       </div>
+      {/* Right handle */}
+      <Handle
+        type="source"
+        position={Position.Right}
+        id="right"
+        className="!w-3 !h-3 !border-2 !border-[#212730] !bg-[#181c24]"
+      />
+      {/* Bottom handle */}
       <Handle
         type="source"
         position={Position.Bottom}
+        id="bottom"
         className="!w-3 !h-3 !border-2 !border-[#212730] !bg-[#181c24]"
       />
     </div>

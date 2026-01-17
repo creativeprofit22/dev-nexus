@@ -45,6 +45,8 @@ interface FlowCanvasProps {
   onNodesChange?: (nodes: FlowNode[]) => void;
   onEdgesChange?: (edges: Edge[]) => void;
   onViewportChange?: (viewport: Viewport) => void;
+  onReactFlowInit?: (instance: ReactFlowInstance) => void;
+  containerRef?: React.RefObject<HTMLDivElement | null>;
   readOnly?: boolean;
 }
 
@@ -62,11 +64,23 @@ export function FlowCanvas({
   onNodesChange: onNodesChangeProp,
   onEdgesChange: onEdgesChangeProp,
   onViewportChange,
+  onReactFlowInit,
+  containerRef: externalContainerRef,
   readOnly = false,
 }: FlowCanvasProps) {
-  const reactFlowWrapper = useRef<HTMLDivElement>(null);
+  const internalContainerRef = useRef<HTMLDivElement>(null);
+  const reactFlowWrapper = externalContainerRef || internalContainerRef;
   const [reactFlowInstance, setReactFlowInstance] =
     useState<ReactFlowInstance | null>(null);
+
+  // Notify parent when ReactFlow initializes
+  const handleInit = useCallback(
+    (instance: ReactFlowInstance) => {
+      setReactFlowInstance(instance);
+      onReactFlowInit?.(instance);
+    },
+    [onReactFlowInit]
+  );
   const [nodes, setNodes, handleNodesChange] = useNodesState(
     initialNodes as Node[]
   );
@@ -150,7 +164,7 @@ export function FlowCanvas({
 
       setNodes((nds) => nds.concat(newNode as Node));
     },
-    [reactFlowInstance, setNodes, readOnly]
+    [reactFlowInstance, reactFlowWrapper, setNodes, readOnly]
   );
 
   // Handle toolbar button drag start
@@ -205,7 +219,7 @@ export function FlowCanvas({
         onNodesChange={readOnly ? undefined : handleNodesChange}
         onEdgesChange={readOnly ? undefined : handleEdgesChange}
         onConnect={onConnect}
-        onInit={setReactFlowInstance}
+        onInit={handleInit}
         onMoveEnd={handleMoveEnd}
         onDragOver={onDragOver}
         onDrop={onDrop}

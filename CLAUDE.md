@@ -16,7 +16,7 @@ Session-Mode: Multi-session (clear context between gaps)
 ### Priority 1: HIGH IMPACT
 | Gap | Module | Status |
 |-----|--------|--------|
-| CommandPalette | Shared UI | NOT STARTED |
+| CommandPalette | Shared UI | DONE |
 | Export PNG/SVG/PDF | Flows | NOT STARTED |
 | Live Preview (iframe) | Components | NOT STARTED |
 | VS Code click-to-open | Structure | NOT STARTED |
