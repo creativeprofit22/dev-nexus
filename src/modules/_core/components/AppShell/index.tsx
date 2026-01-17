@@ -4,6 +4,8 @@ import { useState, useCallback } from "react";
 import { Sidebar } from "../Sidebar";
 import { ContentArea } from "../ContentArea";
 import { ContextPanel } from "../ContextPanel";
+import { CommandPalette } from "@/shared/components/ui/CommandPalette";
+import { useCommandPalette } from "@/shared/hooks/useCommandPalette";
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -16,6 +18,8 @@ interface AppShellProps {
 export function AppShell({ children }: AppShellProps) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [contextPanelOpen, setContextPanelOpen] = useState(false);
+  const { isOpen: commandPaletteOpen, close: closeCommandPalette } =
+    useCommandPalette();
 
   // Memoized callbacks to prevent re-renders of Sidebar/ContentArea/ContextPanel
   const handleToggleSidebar = useCallback(() => {
@@ -29,6 +33,13 @@ export function AppShell({ children }: AppShellProps) {
   const handleCloseContextPanel = useCallback(() => {
     setContextPanelOpen(false);
   }, []);
+
+  const handleCommandPaletteChange = useCallback(
+    (open: boolean) => {
+      if (!open) closeCommandPalette();
+    },
+    [closeCommandPalette]
+  );
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-background">
@@ -45,6 +56,12 @@ export function AppShell({ children }: AppShellProps) {
 
       {/* Right Context Panel */}
       <ContextPanel open={contextPanelOpen} onClose={handleCloseContextPanel} />
+
+      {/* Global Command Palette (Cmd+K / Ctrl+K) */}
+      <CommandPalette
+        open={commandPaletteOpen}
+        onOpenChange={handleCommandPaletteChange}
+      />
     </div>
   );
 }
