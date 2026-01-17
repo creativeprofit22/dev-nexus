@@ -3,13 +3,16 @@
  */
 "use client";
 
-import { useState, useEffect, memo } from "react";
+import { useState, useEffect, memo, useMemo, useCallback } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { Button } from "@/shared/components/ui/Button";
 import { Input } from "@/shared/components/ui/Input";
 import { EditorToolbar } from "./EditorToolbar";
+import { createMentionExtension } from "../../extensions/mention.extension";
+import { useMentionSuggestions } from "../../hooks/useMentionSuggestions";
 import type { NoteSelect } from "../../types/note.types";
+import "tippy.js/dist/tippy.css";
 
 interface NoteEditorProps {
   note?: NoteSelect;
@@ -72,8 +75,29 @@ export function NoteEditor({
   const [tags, setTags] = useState<string[]>(note?.tags || []);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  // Fetch all suggestions upfront for mention autocomplete
+  const { suggestions: allSuggestions } = useMentionSuggestions("");
+
+  // Create callback for filtering suggestions by query
+  const getSuggestions = useCallback(
+    (query: string) => {
+      const normalizedQuery = query.toLowerCase().trim();
+      if (!normalizedQuery) return allSuggestions.slice(0, 8);
+      return allSuggestions
+        .filter((s) => s.label.toLowerCase().includes(normalizedQuery))
+        .slice(0, 8);
+    },
+    [allSuggestions]
+  );
+
+  // Create mention extension with suggestions
+  const mentionExtension = useMemo(
+    () => createMentionExtension(getSuggestions),
+    [getSuggestions]
+  );
+
   const editor = useEditor({
-    extensions: [StarterKit],
+    extensions: [StarterKit, mentionExtension],
     content: note?.content
       ? (() => {
           try {

@@ -19,7 +19,7 @@ Session-Mode: Multi-session (clear context between gaps)
 | CommandPalette | Shared UI | DONE |
 | Export PNG/SVG/PDF | Flows | DONE |
 | Live Preview (iframe) | Components | DONE |
-| VS Code click-to-open | Structure | NOT STARTED |
+| VS Code click-to-open | Structure | DONE |
 | Mentions (@project) | Notes | NOT STARTED |
 
 ### Priority 2: MEDIUM IMPACT
