@@ -763,4 +763,98 @@ export const promptsRouter = router({
 
       return result[0]!;
     }),
+
+  /**
+   * Get context values for variable auto-fill
+   *
+   * Input:
+   * - projectId?: string - Project to get context from
+   * - variables: string[] - Variable names to get suggestions for
+   *
+   * Output: Record of variable name to suggested values
+   *
+   * Ultra Think:
+   * - Maps common variable names to project context
+   * - Returns empty object if no project provided
+   * - Supports multiple naming conventions (camelCase, snake_case)
+   */
+  getContextValues: publicProcedure
+    .input(
+      z.object({
+        projectId: z.string().optional(),
+        variables: z.array(z.string()),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      // If no project provided, return empty suggestions
+      if (!input.projectId) {
+        return { values: {} as Record<string, string> };
+      }
+
+      // Fetch project context
+      const { projects } = await import("@/core/db/schema/projects.schema");
+      const projectResult = await ctx.db
+        .select()
+        .from(projects)
+        .where(eq(projects.id, input.projectId))
+        .limit(1);
+
+      if (projectResult.length === 0) {
+        return { values: {} as Record<string, string> };
+      }
+
+      const project = projectResult[0]!;
+
+      // Map variable names to project context
+      const variableMappings: Record<string, string | null | undefined> = {
+        // Project name variations
+        projectname: project.name,
+        project_name: project.name,
+        projectName: project.name,
+        name: project.name,
+        project: project.name,
+
+        // Project path variations
+        projectpath: project.pathWSL,
+        project_path: project.pathWSL,
+        projectPath: project.pathWSL,
+        path: project.pathWSL,
+        wslpath: project.pathWSL,
+        wsl_path: project.pathWSL,
+        windowspath: project.pathWindows,
+        windows_path: project.pathWindows,
+        windowsPath: project.pathWindows,
+
+        // Tech stack variations
+        technologies: project.techStack?.join(", "),
+        tech_stack: project.techStack?.join(", "),
+        techStack: project.techStack?.join(", "),
+        techstack: project.techStack?.join(", "),
+        stack: project.techStack?.join(", "),
+        frameworks: project.techStack?.join(", "),
+
+        // Description variations
+        description: project.description,
+        project_description: project.description,
+        projectDescription: project.description,
+
+        // Status variations
+        status: project.status,
+        project_status: project.status,
+        projectStatus: project.status,
+      };
+
+      // Build response with matching values
+      const values: Record<string, string> = {};
+      for (const variable of input.variables) {
+        const normalizedName = variable.toLowerCase();
+        const value =
+          variableMappings[variable] ?? variableMappings[normalizedName];
+        if (value) {
+          values[variable] = value;
+        }
+      }
+
+      return { values };
+    }),
 });

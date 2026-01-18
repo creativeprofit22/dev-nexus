@@ -5,16 +5,20 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { Card } from "@/shared/components/ui/Card";
 import { Button } from "@/shared/components/ui/Button";
 import { ConfirmDialog } from "@/shared/components/ui/ConfirmDialog";
+import { Dialog } from "@/shared/components/ui/Dialog";
 import { usePromptMutations } from "../../hooks/usePromptMutations";
+import { useVariableAutoFill } from "../../hooks/useVariableAutoFill";
+import { VariableInputGroup } from "../VariableInput";
 import type { Prompt, PromptCategory } from "../../types/prompt.types";
 
 interface PromptCardProps {
   prompt: Prompt;
+  projectId?: string;
   onEdit?: (id: string) => void;
   onClick?: (id: string) => void;
 }
@@ -59,8 +63,12 @@ const categoryConfig: Record<PromptCategory, { label: string; color: string }> =
     },
   };
 
-const extractVariables = (content: string) => [
-  ...new Set(Array.from(content.matchAll(/\{\{(\w+)\}\}/g), (m) => m[1])),
+const extractVariables = (content: string): string[] => [
+  ...new Set(
+    Array.from(content.matchAll(/\{\{(\w+)\}\}/g), (m) => m[1]).filter(
+      (v): v is string => v !== undefined
+    )
+  ),
 ];
 const highlightVariables = (content: string) =>
   content.split(/(\{\{\w+\}\})/g).map((part, i) =>
@@ -73,14 +81,87 @@ const highlightVariables = (content: string) =>
     )
   );
 
-export function PromptCard({ prompt, onEdit, onClick }: PromptCardProps) {
+export function PromptCard({
+  prompt,
+  projectId,
+  onEdit,
+  onClick,
+}: PromptCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [copyFeedback, setCopyFeedback] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const { deletePrompt, duplicatePrompt } = usePromptMutations();
+  const [showVariableDialog, setShowVariableDialog] = useState(false);
+  const [variableValues, setVariableValues] = useState<Record<string, string>>(
+    {}
+  );
+  const { deletePrompt, duplicatePrompt, incrementUsage } =
+    usePromptMutations();
 
   const category = categoryConfig[prompt.category as PromptCategory];
   const variables = extractVariables(prompt.content);
+  const hasVariables = variables.length > 0;
+
+  // Use auto-fill hook for variable suggestions
+  const {
+    variableValues: autoFillValues,
+    interpolate,
+    saveRecent,
+    isLoading: autoFillLoading,
+  } = useVariableAutoFill({
+    projectId: projectId ?? prompt.projectId ?? undefined,
+    variables,
+  });
+
+  // Build initial values from auto-fill (computed, not in effect)
+  const initialAutoFillValues = useMemo(() => {
+    const values: Record<string, string> = {};
+    autoFillValues.forEach((v) => {
+      values[v.name] = v.value;
+    });
+    return values;
+  }, [autoFillValues]);
+
+  // Reset variable values when dialog opens
+  const handleOpenVariableDialog = useCallback(() => {
+    setVariableValues(initialAutoFillValues);
+    setShowVariableDialog(true);
+  }, [initialAutoFillValues]);
+
+  // Prepare variables with their values and suggestions for the input group
+  const variablesWithSuggestions = useMemo(() => {
+    return autoFillValues.map((v) => ({
+      name: v.name,
+      value: variableValues[v.name] ?? v.value,
+      suggestions: v.suggestions,
+    }));
+  }, [autoFillValues, variableValues]);
+
+  // Handle variable value change
+  const handleVariableChange = useCallback((name: string, value: string) => {
+    setVariableValues((prev) => ({ ...prev, [name]: value }));
+  }, []);
+
+  // Copy prompt with variables filled in
+  const copyWithVariables = useCallback(async () => {
+    try {
+      const filledContent = interpolate(prompt.content, variableValues);
+      await navigator.clipboard.writeText(filledContent);
+      saveRecent(variableValues);
+      incrementUsage.mutate({ id: prompt.id });
+      setShowVariableDialog(false);
+      setCopyFeedback(true);
+      setTimeout(() => setCopyFeedback(false), 2000);
+    } catch (err) {
+      console.error("Failed to copy to clipboard:", err);
+    }
+  }, [
+    prompt.content,
+    prompt.id,
+    variableValues,
+    interpolate,
+    saveRecent,
+    incrementUsage,
+  ]);
   const contentPreview =
     prompt.content.length > 150
       ? prompt.content.substring(0, 150).trim() + "..."
@@ -99,8 +180,15 @@ export function PromptCard({ prompt, onEdit, onClick }: PromptCardProps) {
 
   const handleCopy = async (e: React.MouseEvent) =>
     stopProp(e, async () => {
+      // If prompt has variables, show the variable dialog
+      if (hasVariables) {
+        handleOpenVariableDialog();
+        return;
+      }
+      // No variables - copy directly
       try {
         await navigator.clipboard.writeText(prompt.content);
+        incrementUsage.mutate({ id: prompt.id });
         setCopyFeedback(true);
         setTimeout(() => setCopyFeedback(false), 2000);
       } catch (err) {
@@ -215,7 +303,7 @@ export function PromptCard({ prompt, onEdit, onClick }: PromptCardProps) {
           onClick={handleCopy}
           className="flex-1 min-w-[100px]"
         >
-          {copyFeedback ? "Copied!" : "Copy"}
+          {copyFeedback ? "Copied!" : hasVariables ? "Use" : "Copy"}
         </Button>
         {onEdit && (
           <Button
@@ -262,6 +350,89 @@ export function PromptCard({ prompt, onEdit, onClick }: PromptCardProps) {
         variant="danger"
         isLoading={deletePrompt.isLoading}
       />
+
+      {/* Variable Input Dialog */}
+      <Dialog
+        open={showVariableDialog}
+        onOpenChange={setShowVariableDialog}
+        title="Fill Variables"
+        description="Enter values for the variables in this prompt. Auto-filled values are from your project context."
+      >
+        <div className="space-y-6">
+          {autoFillLoading ? (
+            <div className="flex items-center justify-center py-8 text-[#64748b]">
+              <svg
+                className="animate-spin h-5 w-5 mr-2"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                />
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                />
+              </svg>
+              Loading suggestions...
+            </div>
+          ) : (
+            <VariableInputGroup
+              variables={variablesWithSuggestions}
+              onChange={handleVariableChange}
+            />
+          )}
+
+          {/* Preview */}
+          <div className="border-t border-[#212730] pt-4">
+            <div className="flex items-center gap-2 mb-2 text-sm text-[#64748b]">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+                <circle cx="12" cy="12" r="3" />
+              </svg>
+              <span>Preview</span>
+            </div>
+            <div className="p-3 rounded-lg bg-[#14161c] border border-[#212730] text-sm text-[#94a3b8] max-h-32 overflow-auto whitespace-pre-wrap">
+              {interpolate(prompt.content, variableValues)}
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="flex gap-3 pt-2">
+            <Button
+              variant="secondary"
+              className="flex-1"
+              onClick={() => setShowVariableDialog(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              className="flex-1"
+              onClick={copyWithVariables}
+            >
+              Copy to Clipboard
+            </Button>
+          </div>
+        </div>
+      </Dialog>
     </Card>
   );
 }
