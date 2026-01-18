@@ -40,8 +40,8 @@ export function PromptsView({ onNewPrompt, onEditPrompt }: PromptsViewProps) {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [selectedProjectId, setSelectedProjectId] = useState<string>("");
 
-  // Fetch projects for the context selector
-  const { projects } = useProjects({ status: "active" });
+  // Fetch projects for the context selector (all projects, not filtered)
+  const { projects } = useProjects();
 
   // Fetch prompts with filters
   const { prompts, isLoading, isError, error, refetch } = usePrompts({
