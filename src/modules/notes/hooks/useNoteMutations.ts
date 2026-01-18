@@ -22,12 +22,23 @@ interface MutationResult<TVariables, TData = NoteSelect> {
   error: { message: string } | null;
 }
 
+interface Version {
+  id: string;
+  entityType: string;
+  entityId: string;
+  title: string;
+  content: string;
+  createdAt: string;
+}
+
 interface UseNoteMutationsResult {
   createNote: MutationResult<CreateNoteInput>;
   updateNote: MutationResult<{ id: string; data: UpdateNoteInput }>;
   deleteNote: MutationResult<{ id: string }, { success: boolean }>;
   duplicateNote: MutationResult<{ id: string; title?: string }, NoteSelect>;
   togglePin: MutationResult<{ id: string }, NoteSelect>;
+  createVersion: MutationResult<{ noteId: string }, Version>;
+  restoreVersion: MutationResult<{ versionId: string }, NoteSelect>;
 }
 
 /**
@@ -152,6 +163,38 @@ export function useNoteMutations(): UseNoteMutationsResult {
     })
   );
 
+  // CREATE VERSION MUTATION
+  const createVersion = useMutation(
+    trpc.notes.createVersion.mutationOptions({
+      onSuccess: (_data, variables) => {
+        queryClient.invalidateQueries({
+          queryKey: [["notes", "listVersions"], { noteId: variables.noteId }],
+        });
+      },
+      onError: (error) => {
+        console.error("Failed to create version:", error);
+      },
+    })
+  );
+
+  // RESTORE VERSION MUTATION
+  const restoreVersion = useMutation(
+    trpc.notes.restoreVersion.mutationOptions({
+      onSuccess: (data) => {
+        queryClient.invalidateQueries({
+          queryKey: [["notes", "get"], { id: data.id }],
+        });
+        queryClient.invalidateQueries({ queryKey: [["notes", "list"]] });
+        queryClient.invalidateQueries({
+          queryKey: [["notes", "listVersions"], { noteId: data.id }],
+        });
+      },
+      onError: (error) => {
+        console.error("Failed to restore version:", error);
+      },
+    })
+  );
+
   return {
     createNote: {
       mutate: createNote.mutate,
@@ -187,6 +230,20 @@ export function useNoteMutations(): UseNoteMutationsResult {
       isLoading: togglePin.isPending,
       isError: togglePin.isError,
       error: togglePin.error,
+    },
+    createVersion: {
+      mutate: createVersion.mutate,
+      mutateAsync: createVersion.mutateAsync,
+      isLoading: createVersion.isPending,
+      isError: createVersion.isError,
+      error: createVersion.error,
+    },
+    restoreVersion: {
+      mutate: restoreVersion.mutate,
+      mutateAsync: restoreVersion.mutateAsync,
+      isLoading: restoreVersion.isPending,
+      isError: restoreVersion.isError,
+      error: restoreVersion.error,
     },
   };
 }

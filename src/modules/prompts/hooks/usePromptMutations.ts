@@ -21,6 +21,15 @@ interface MutationResult<TVariables, TData = Prompt> {
   error: { message: string } | null;
 }
 
+interface Version {
+  id: string;
+  entityType: string;
+  entityId: string;
+  title: string;
+  content: string;
+  createdAt: string;
+}
+
 interface UsePromptMutationsResult {
   createPrompt: MutationResult<CreatePromptInput>;
   updatePrompt: MutationResult<UpdatePromptInput>;
@@ -30,6 +39,8 @@ interface UsePromptMutationsResult {
     { id: string },
     { success: boolean; usageCount: number; lastUsed: string | null }
   >;
+  createVersion: MutationResult<{ promptId: string }, Version>;
+  restoreVersion: MutationResult<{ versionId: string }, Prompt>;
 }
 
 /**
@@ -151,6 +162,41 @@ export function usePromptMutations(): UsePromptMutationsResult {
     })
   );
 
+  // CREATE VERSION MUTATION
+  const createVersion = useMutation(
+    trpc.prompts.createVersion.mutationOptions({
+      onSuccess: (_data, variables) => {
+        queryClient.invalidateQueries({
+          queryKey: [
+            ["prompts", "listVersions"],
+            { promptId: variables.promptId },
+          ],
+        });
+      },
+      onError: (error) => {
+        console.error("Failed to create version:", error);
+      },
+    })
+  );
+
+  // RESTORE VERSION MUTATION
+  const restoreVersion = useMutation(
+    trpc.prompts.restoreVersion.mutationOptions({
+      onSuccess: (data) => {
+        queryClient.invalidateQueries({
+          queryKey: [["prompts", "get"], { id: data.id }],
+        });
+        queryClient.invalidateQueries({ queryKey: [["prompts", "list"]] });
+        queryClient.invalidateQueries({
+          queryKey: [["prompts", "listVersions"], { promptId: data.id }],
+        });
+      },
+      onError: (error) => {
+        console.error("Failed to restore version:", error);
+      },
+    })
+  );
+
   return {
     createPrompt: {
       mutate: createPrompt.mutate,
@@ -186,6 +232,20 @@ export function usePromptMutations(): UsePromptMutationsResult {
       isLoading: incrementUsage.isPending,
       isError: incrementUsage.isError,
       error: incrementUsage.error,
+    },
+    createVersion: {
+      mutate: createVersion.mutate,
+      mutateAsync: createVersion.mutateAsync,
+      isLoading: createVersion.isPending,
+      isError: createVersion.isError,
+      error: createVersion.error,
+    },
+    restoreVersion: {
+      mutate: restoreVersion.mutate,
+      mutateAsync: restoreVersion.mutateAsync,
+      isLoading: restoreVersion.isPending,
+      isError: restoreVersion.isError,
+      error: restoreVersion.error,
     },
   };
 }

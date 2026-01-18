@@ -2,6 +2,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { protectedProcedure, router } from "@/core/trpc/init";
 import { notes } from "@/core/db/schema/notes.schema";
+import { versions } from "@/core/db/schema/versions.schema";
 import { eq, and, like, or, desc, asc, sql } from "drizzle-orm";
 
 /**
@@ -12,6 +13,16 @@ function generateNoteId(): string {
   const timestamp = Date.now();
   const random = Math.random().toString(36).substring(2, 8);
   return `note_${timestamp}_${random}`;
+}
+
+/**
+ * Generate a unique ID for versions
+ * Format: version_<timestamp>_<random>
+ */
+function generateVersionId(): string {
+  const timestamp = Date.now();
+  const random = Math.random().toString(36).substring(2, 8);
+  return `version_${timestamp}_${random}`;
 }
 
 /**
@@ -418,6 +429,216 @@ export const notesRouter = router({
       return {
         ...currentNote,
         isPinned: newPinnedStatus,
+        updatedAt: now,
+      };
+    }),
+
+  /**
+   * Create a version snapshot of a note's current state
+   *
+   * Input:
+   * - noteId: string - ID of the note to snapshot
+   *
+   * Output: Created version object
+   *
+   * Use case: Call this before updating a note to preserve its current state
+   */
+  createVersion: protectedProcedure
+    .input(
+      z.object({
+        noteId: z.string().min(1, "Note ID is required"),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      // Fetch current note state
+      const noteResult = await ctx.db
+        .select()
+        .from(notes)
+        .where(eq(notes.id, input.noteId))
+        .limit(1);
+
+      if (noteResult.length === 0 || !noteResult[0]) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: `Note with ID "${input.noteId}" not found`,
+        });
+      }
+
+      const note = noteResult[0];
+
+      // Generate version ID and timestamp
+      const id = generateVersionId();
+      const now = new Date().toISOString();
+
+      // Insert version snapshot
+      await ctx.db.insert(versions).values({
+        id,
+        entityType: "note",
+        entityId: input.noteId,
+        title: note.title,
+        content: note.content,
+        createdAt: now,
+      });
+
+      // Return the created version
+      return {
+        id,
+        entityType: "note" as const,
+        entityId: input.noteId,
+        title: note.title,
+        content: note.content,
+        createdAt: now,
+      };
+    }),
+
+  /**
+   * List all versions for a note
+   *
+   * Input:
+   * - noteId: string - ID of the note
+   * - limit?: number - Max results (default: 20, max: 100)
+   * - offset?: number - Pagination offset (default: 0)
+   *
+   * Output: { versions: Version[], total: number, hasMore: boolean }
+   *
+   * Sorted by createdAt DESC (newest first)
+   */
+  listVersions: protectedProcedure
+    .input(
+      z.object({
+        noteId: z.string().min(1, "Note ID is required"),
+        limit: z.number().min(1).max(100).default(20),
+        offset: z.number().min(0).default(0),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      // Fetch versions for this note
+      const result = await ctx.db
+        .select()
+        .from(versions)
+        .where(
+          and(
+            eq(versions.entityType, "note"),
+            eq(versions.entityId, input.noteId)
+          )
+        )
+        .orderBy(desc(versions.createdAt))
+        .limit(input.limit + 1) // Fetch one extra to check if there are more
+        .offset(input.offset);
+
+      // Get total count for pagination
+      const countResult = await ctx.db
+        .select({ count: sql<number>`count(*)` })
+        .from(versions)
+        .where(
+          and(
+            eq(versions.entityType, "note"),
+            eq(versions.entityId, input.noteId)
+          )
+        );
+
+      const total = countResult[0]?.count ?? 0;
+      const hasMore = result.length > input.limit;
+
+      // Remove the extra item if we fetched more than limit
+      if (hasMore) {
+        result.pop();
+      }
+
+      return {
+        versions: result,
+        total,
+        hasMore,
+      };
+    }),
+
+  /**
+   * Restore a note to a previous version
+   *
+   * Input:
+   * - versionId: string - ID of the version to restore
+   *
+   * Output: Updated note object
+   *
+   * Behavior:
+   * 1. Creates a version snapshot of current note state (preserves current state)
+   * 2. Updates note with title/content from the specified version
+   * 3. Returns the restored note
+   */
+  restoreVersion: protectedProcedure
+    .input(
+      z.object({
+        versionId: z.string().min(1, "Version ID is required"),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      // Fetch the version to restore
+      const versionResult = await ctx.db
+        .select()
+        .from(versions)
+        .where(eq(versions.id, input.versionId))
+        .limit(1);
+
+      if (versionResult.length === 0 || !versionResult[0]) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: `Version with ID "${input.versionId}" not found`,
+        });
+      }
+
+      const version = versionResult[0];
+
+      // Verify this is a note version
+      if (version.entityType !== "note") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `Version "${input.versionId}" is not a note version`,
+        });
+      }
+
+      // Fetch current note state to create a backup version
+      const noteResult = await ctx.db
+        .select()
+        .from(notes)
+        .where(eq(notes.id, version.entityId))
+        .limit(1);
+
+      if (noteResult.length === 0 || !noteResult[0]) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: `Note with ID "${version.entityId}" not found`,
+        });
+      }
+
+      const currentNote = noteResult[0];
+      const now = new Date().toISOString();
+
+      // Create a version snapshot of current state BEFORE restoring
+      const backupVersionId = generateVersionId();
+      await ctx.db.insert(versions).values({
+        id: backupVersionId,
+        entityType: "note",
+        entityId: version.entityId,
+        title: currentNote.title,
+        content: currentNote.content,
+        createdAt: now,
+      });
+
+      // Update the note with version's title and content
+      await ctx.db
+        .update(notes)
+        .set({
+          title: version.title,
+          content: version.content,
+          updatedAt: now,
+        })
+        .where(eq(notes.id, version.entityId));
+
+      // Return the restored note
+      return {
+        ...currentNote,
+        title: version.title,
+        content: version.content,
         updatedAt: now,
       };
     }),

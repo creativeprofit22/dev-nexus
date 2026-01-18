@@ -2,6 +2,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { publicProcedure, router } from "@/core/trpc/init";
 import { prompts } from "@/core/db/schema/prompts.schema";
+import { versions } from "@/core/db/schema/versions.schema";
 import { eq, and, like, or, desc, asc, sql } from "drizzle-orm";
 import type { PromptCategory } from "../types/prompt.types";
 
@@ -36,6 +37,16 @@ function generatePromptId(): string {
   const timestamp = Date.now();
   const random = Math.random().toString(36).substring(2, 8);
   return `prompt_${timestamp}_${random}`;
+}
+
+/**
+ * Generate a unique ID for versions
+ * Format: version_<timestamp>_<random>
+ */
+function generateVersionId(): string {
+  const timestamp = Date.now();
+  const random = Math.random().toString(36).substring(2, 8);
+  return `version_${timestamp}_${random}`;
 }
 
 /**
@@ -523,5 +534,233 @@ export const promptsRouter = router({
         usageCount: updated.usageCount,
         lastUsed: updated.lastUsed,
       };
+    }),
+
+  /**
+   * Create a version snapshot of a prompt
+   *
+   * Input:
+   * - promptId: string - ID of the prompt to snapshot
+   *
+   * Output: Created version object
+   *
+   * Ultra Think:
+   * 1. Fetch current prompt state
+   * 2. Generate version ID and timestamp
+   * 3. Store snapshot with entityType="prompt"
+   * 4. Return created version
+   *
+   * Use Case:
+   * - Call before updating a prompt to preserve current state
+   * - Enables undo/restore functionality
+   */
+  createVersion: publicProcedure
+    .input(
+      z.object({
+        promptId: z.string().min(1, "Prompt ID is required"),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      // Step 1: Fetch current prompt state
+      const promptResult = await ctx.db
+        .select()
+        .from(prompts)
+        .where(eq(prompts.id, input.promptId))
+        .limit(1);
+
+      if (promptResult.length === 0) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: `Prompt with ID "${input.promptId}" not found`,
+        });
+      }
+
+      const prompt = promptResult[0]!;
+
+      // Step 2: Generate version ID and timestamp
+      const versionId = generateVersionId();
+      const now = new Date().toISOString();
+
+      // Step 3: Store snapshot
+      await ctx.db.insert(versions).values({
+        id: versionId,
+        entityType: "prompt",
+        entityId: input.promptId,
+        title: prompt.title,
+        content: prompt.content,
+        createdAt: now,
+      });
+
+      // Step 4: Return created version
+      const result = await ctx.db
+        .select()
+        .from(versions)
+        .where(eq(versions.id, versionId))
+        .limit(1);
+
+      return result[0]!;
+    }),
+
+  /**
+   * List all versions for a prompt
+   *
+   * Input:
+   * - promptId: string - ID of the prompt
+   * - limit?: number - Max results (default: 50, max: 100)
+   * - offset?: number - Pagination offset (default: 0)
+   *
+   * Output: { versions: Version[], total: number, hasMore: boolean }
+   *
+   * Ultra Think:
+   * - Uses composite index (entityType, entityId) for fast lookup
+   * - Sorted by createdAt DESC (newest first)
+   * - Pagination for large version histories
+   */
+  listVersions: publicProcedure
+    .input(
+      z.object({
+        promptId: z.string().min(1, "Prompt ID is required"),
+        limit: z.number().min(1).max(100).default(50),
+        offset: z.number().min(0).default(0),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      // Build filter conditions
+      const filters = [
+        eq(versions.entityType, "prompt"),
+        eq(versions.entityId, input.promptId),
+      ];
+
+      // Execute query with filters and pagination
+      const result = await ctx.db
+        .select()
+        .from(versions)
+        .where(and(...filters))
+        .orderBy(desc(versions.createdAt))
+        .limit(input.limit + 1) // Fetch one extra to check if there are more
+        .offset(input.offset);
+
+      // Get total count for pagination
+      const countResult = await ctx.db
+        .select({ count: sql<number>`count(*)` })
+        .from(versions)
+        .where(and(...filters));
+
+      const total = countResult[0]?.count ?? 0;
+      const hasMore = result.length > input.limit;
+
+      // Remove the extra item if we fetched more than limit
+      if (hasMore) {
+        result.pop();
+      }
+
+      return {
+        versions: result,
+        total,
+        hasMore,
+      };
+    }),
+
+  /**
+   * Restore a prompt to a previous version
+   *
+   * Input:
+   * - versionId: string - ID of the version to restore
+   *
+   * Output: Restored prompt object
+   *
+   * Ultra Think:
+   * 1. Fetch the version to restore
+   * 2. Validate it's a prompt version
+   * 3. Create a new version snapshot of CURRENT state (before restoring)
+   * 4. Update the prompt with title/content from version
+   * 5. Return the restored prompt
+   *
+   * Safety:
+   * - Always creates a backup snapshot before restoring
+   * - User can undo the restore by restoring the backup
+   */
+  restoreVersion: publicProcedure
+    .input(
+      z.object({
+        versionId: z.string().min(1, "Version ID is required"),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      // Step 1: Fetch the version to restore
+      const versionResult = await ctx.db
+        .select()
+        .from(versions)
+        .where(eq(versions.id, input.versionId))
+        .limit(1);
+
+      if (versionResult.length === 0) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: `Version with ID "${input.versionId}" not found`,
+        });
+      }
+
+      const version = versionResult[0]!;
+
+      // Step 2: Validate it's a prompt version
+      if (version.entityType !== "prompt") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `Version "${input.versionId}" is not a prompt version`,
+        });
+      }
+
+      // Step 3: Fetch current prompt state (to create backup)
+      const promptResult = await ctx.db
+        .select()
+        .from(prompts)
+        .where(eq(prompts.id, version.entityId))
+        .limit(1);
+
+      if (promptResult.length === 0) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: `Prompt with ID "${version.entityId}" no longer exists`,
+        });
+      }
+
+      const currentPrompt = promptResult[0]!;
+
+      // Step 4: Create backup snapshot of current state
+      const backupVersionId = generateVersionId();
+      const now = new Date().toISOString();
+
+      await ctx.db.insert(versions).values({
+        id: backupVersionId,
+        entityType: "prompt",
+        entityId: version.entityId,
+        title: currentPrompt.title,
+        content: currentPrompt.content,
+        createdAt: now,
+      });
+
+      // Step 5: Update prompt with title/content from version
+      // Re-detect variables from restored content
+      const restoredVariables = extractVariables(version.content);
+
+      await ctx.db
+        .update(prompts)
+        .set({
+          title: version.title,
+          content: version.content,
+          variables: restoredVariables,
+          updatedAt: now,
+        })
+        .where(eq(prompts.id, version.entityId));
+
+      // Step 6: Return the restored prompt
+      const result = await ctx.db
+        .select()
+        .from(prompts)
+        .where(eq(prompts.id, version.entityId))
+        .limit(1);
+
+      return result[0]!;
     }),
 });

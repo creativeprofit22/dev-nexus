@@ -5,3 +5,4 @@ export * from "./components.schema";
 export * from "./flows.schema";
 export * from "./notes.schema";
 export * from "./relations.schema";
+export * from "./versions.schema";

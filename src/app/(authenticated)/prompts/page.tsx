@@ -12,8 +12,11 @@ import {
   type PromptEditorData,
 } from "@/modules/prompts/components/PromptEditor";
 import { Dialog } from "@/shared/components/ui/Dialog";
+import { VersionHistory } from "@/shared/components/ui/VersionHistory";
+import { Button } from "@/shared/components/ui/Button";
 import { usePrompts } from "@/modules/prompts/hooks/usePrompts";
 import { usePromptMutations } from "@/modules/prompts/hooks/usePromptMutations";
+import { usePromptVersions } from "@/modules/prompts/hooks/usePromptVersions";
 import type { Prompt } from "@/modules/prompts/types/prompt.types";
 
 type DialogMode = "create" | "edit" | null;
@@ -21,9 +24,19 @@ type DialogMode = "create" | "edit" | null;
 export default function PromptsPage() {
   const [dialogMode, setDialogMode] = useState<DialogMode>(null);
   const [editingPrompt, setEditingPrompt] = useState<Prompt | null>(null);
+  const [showVersionHistory, setShowVersionHistory] = useState(false);
 
-  const { prompts } = usePrompts();
-  const { createPrompt, updatePrompt } = usePromptMutations();
+  const { prompts, refetch } = usePrompts();
+  const { createPrompt, updatePrompt, createVersion, restoreVersion } =
+    usePromptMutations();
+  const {
+    versions,
+    isLoading: versionsLoading,
+    refetch: refetchVersions,
+  } = usePromptVersions({
+    promptId: editingPrompt?.id || "",
+    enabled: showVersionHistory && !!editingPrompt?.id,
+  });
 
   const handleOpenCreate = () => {
     setEditingPrompt(null);
@@ -41,6 +54,24 @@ export default function PromptsPage() {
   const handleCloseDialog = () => {
     setDialogMode(null);
     setEditingPrompt(null);
+    setShowVersionHistory(false);
+  };
+
+  const handleRestoreVersion = async (versionId: string) => {
+    try {
+      await restoreVersion.mutateAsync({ versionId });
+      setShowVersionHistory(false);
+      refetch();
+      // Update the editing prompt with restored data
+      if (editingPrompt) {
+        const updated = prompts?.find((p) => p.id === editingPrompt.id);
+        if (updated) {
+          setEditingPrompt(updated);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to restore version:", err);
+    }
   };
 
   const handleSave = async (data: PromptEditorData) => {
@@ -53,6 +84,8 @@ export default function PromptsPage() {
           tags: data.tags,
         });
       } else if (dialogMode === "edit" && editingPrompt) {
+        // Create version snapshot before updating
+        await createVersion.mutateAsync({ promptId: editingPrompt.id });
         await updatePrompt.mutateAsync({
           id: editingPrompt.id,
           title: data.title,
@@ -68,7 +101,11 @@ export default function PromptsPage() {
     }
   };
 
-  const isMutating = createPrompt.isLoading || updatePrompt.isLoading;
+  const isMutating =
+    createPrompt.isLoading ||
+    updatePrompt.isLoading ||
+    createVersion.isLoading ||
+    restoreVersion.isLoading;
 
   return (
     <>
@@ -88,6 +125,20 @@ export default function PromptsPage() {
             : "Update prompt details"
         }
       >
+        {dialogMode === "edit" && editingPrompt && (
+          <div className="mb-4 flex justify-end">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setShowVersionHistory(true);
+                refetchVersions();
+              }}
+            >
+              View History
+            </Button>
+          </div>
+        )}
         <PromptEditor
           key={editingPrompt?.id || "create"}
           prompt={editingPrompt || undefined}
@@ -96,6 +147,16 @@ export default function PromptsPage() {
           isLoading={isMutating}
         />
       </Dialog>
+
+      {/* Version History Panel */}
+      {showVersionHistory && editingPrompt && (
+        <VersionHistory
+          versions={versions || []}
+          isLoading={versionsLoading}
+          onRestore={handleRestoreVersion}
+          onClose={() => setShowVersionHistory(false)}
+        />
+      )}
     </>
   );
 }

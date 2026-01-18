@@ -9,8 +9,10 @@ import { NoteCard } from "../NoteCard";
 import { Button } from "@/shared/components/ui/Button";
 import { Input } from "@/shared/components/ui/Input";
 import { Dialog } from "@/shared/components/ui/Dialog";
+import { VersionHistory } from "@/shared/components/ui/VersionHistory";
 import { NoteEditor, type NoteEditorData } from "../NoteEditor";
 import { useNoteMutations } from "../../hooks/useNoteMutations";
+import { useNoteVersions } from "../../hooks/useNoteVersions";
 import type { NoteSelect } from "../../types/note.types";
 
 interface NotesViewProps {
@@ -23,8 +25,10 @@ export function NotesView({ projectId }: NotesViewProps) {
   const [showPinnedOnly, setShowPinnedOnly] = useState(false);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [editingNote, setEditingNote] = useState<NoteSelect | undefined>();
+  const [showVersionHistory, setShowVersionHistory] = useState(false);
 
-  const { createNote, updateNote } = useNoteMutations();
+  const { createNote, updateNote, createVersion, restoreVersion } =
+    useNoteMutations();
   const { notes, isLoading, isError, error, refetch } = useNotes({
     search: searchQuery || undefined,
     tags: selectedTags.length > 0 ? selectedTags : undefined,
@@ -32,6 +36,15 @@ export function NotesView({ projectId }: NotesViewProps) {
     isPinned: showPinnedOnly ? true : undefined,
     sortBy: "updatedAt",
     sortOrder: "desc",
+  });
+
+  const {
+    versions,
+    isLoading: versionsLoading,
+    refetch: refetchVersions,
+  } = useNoteVersions({
+    noteId: editingNote?.id || "",
+    enabled: showVersionHistory && !!editingNote?.id,
   });
 
   const sortedNotes = useMemo(() => {
@@ -74,21 +87,34 @@ export function NotesView({ projectId }: NotesViewProps) {
   const handleSaveNote = async (data: NoteEditorData) => {
     try {
       if (editingNote) {
+        // Create version snapshot before updating
+        await createVersion.mutateAsync({ noteId: editingNote.id });
         await updateNote.mutateAsync({ id: editingNote.id, data });
       } else {
         await createNote.mutateAsync(data);
       }
       setIsEditorOpen(false);
       setEditingNote(undefined);
+      setShowVersionHistory(false);
     } catch (err) {
       console.error("Failed to save note:", err);
       throw err;
     }
   };
-  const handleCancelEdit = () => (
-    setIsEditorOpen(false),
-    setEditingNote(undefined)
-  );
+  const handleCancelEdit = () => {
+    setIsEditorOpen(false);
+    setEditingNote(undefined);
+    setShowVersionHistory(false);
+  };
+  const handleRestoreVersion = async (versionId: string) => {
+    try {
+      await restoreVersion.mutateAsync({ versionId });
+      setShowVersionHistory(false);
+      refetch();
+    } catch (err) {
+      console.error("Failed to restore version:", err);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -224,14 +250,43 @@ export function NotesView({ projectId }: NotesViewProps) {
           editingNote ? "Make changes to your note" : "Create a new note"
         }
       >
+        {editingNote && (
+          <div className="mb-4 flex justify-end">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setShowVersionHistory(true);
+                refetchVersions();
+              }}
+            >
+              View History
+            </Button>
+          </div>
+        )}
         <NoteEditor
           note={editingNote}
           projectId={projectId}
           onSave={handleSaveNote}
           onCancel={handleCancelEdit}
-          isLoading={createNote.isLoading || updateNote.isLoading}
+          isLoading={
+            createNote.isLoading ||
+            updateNote.isLoading ||
+            createVersion.isLoading ||
+            restoreVersion.isLoading
+          }
         />
       </Dialog>
+
+      {/* Version History Panel */}
+      {showVersionHistory && editingNote && (
+        <VersionHistory
+          versions={versions || []}
+          isLoading={versionsLoading}
+          onRestore={handleRestoreVersion}
+          onClose={() => setShowVersionHistory(false)}
+        />
+      )}
     </div>
   );
 }
