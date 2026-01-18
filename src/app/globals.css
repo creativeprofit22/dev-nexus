@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "highlight.js/styles/github-dark.css";
 
 @layer base {
   * {
@@ -76,4 +77,59 @@
 
 .tippy-arrow {
   display: none;
+}
+
+/* Syntax Highlighting - Dark Theme */
+.ProseMirror pre,
+.tiptap pre,
+.prose pre {
+  background-color: #0d1117 !important;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  padding: 16px;
+  overflow-x: auto;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+    "Liberation Mono", monospace;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.ProseMirror pre code,
+.tiptap pre code,
+.prose pre code {
+  background: none !important;
+  padding: 0;
+  color: #c9d1d9; /* Base text color for code - matches github-dark theme */
+}
+
+
+/* Syntax highlighting colors now imported from highlight.js/styles/github-dark.css */
+
+/* DEBUG: Add visible indicator for hljs spans */
+.ProseMirror pre code span[class*="hljs-"] {
+  /* If this shows, decorations ARE being applied */
+  text-decoration: underline;
+  text-decoration-color: rgba(255, 100, 100, 0.5);
+}
+
+/* Ensure hljs colors override base code color */
+.ProseMirror pre code .hljs-keyword,
+.ProseMirror pre code .hljs-type,
+.ProseMirror pre code .hljs-template-variable,
+.ProseMirror pre code .hljs-variable.language_ {
+  color: #ff7b72 !important;
+}
+
+.ProseMirror pre code .hljs-string,
+.ProseMirror pre code .hljs-attr {
+  color: #a5d6ff !important;
+}
+
+.ProseMirror pre code .hljs-comment {
+  color: #8b949e !important;
+}
+
+.ProseMirror pre code .hljs-number,
+.ProseMirror pre code .hljs-literal {
+  color: #79c0ff !important;
 }

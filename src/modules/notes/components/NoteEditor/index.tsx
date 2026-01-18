@@ -6,6 +6,8 @@
 import { useState, useEffect, memo, useMemo, useCallback } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
+import { CodeBlockShiki } from "./CodeBlockShiki";
+
 import { Button } from "@/shared/components/ui/Button";
 import { Input } from "@/shared/components/ui/Input";
 import { EditorToolbar } from "./EditorToolbar";
@@ -97,7 +99,15 @@ export function NoteEditor({
   );
 
   const editor = useEditor({
-    extensions: [StarterKit, mentionExtension],
+    extensions: [
+      StarterKit.configure({
+        codeBlock: false, // Disable default codeBlock, use CodeBlockShiki instead
+      }),
+      CodeBlockShiki.configure({
+        defaultLanguage: "javascript",
+      }),
+      mentionExtension,
+    ],
     content: note?.content
       ? (() => {
           try {
