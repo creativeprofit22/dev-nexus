@@ -19,6 +19,7 @@ interface Version {
 interface VersionHistoryProps {
   versions: Version[];
   isLoading?: boolean;
+  isRestoring?: boolean;
   onRestore: (versionId: string) => void;
   onClose: () => void;
 }
@@ -89,6 +90,7 @@ function truncateText(text: string, maxLength: number): string {
 export function VersionHistory({
   versions,
   isLoading = false,
+  isRestoring = false,
   onRestore,
   onClose,
 }: VersionHistoryProps) {
@@ -273,9 +275,10 @@ export function VersionHistory({
                         variant="ghost"
                         size="sm"
                         onClick={() => onRestore(version.id)}
+                        disabled={isRestoring}
                         className="text-sky-500 hover:text-sky-400 hover:bg-sky-500/10"
                       >
-                        Restore this version
+                        {isRestoring ? "Restoring..." : "Restore this version"}
                       </Button>
                     </div>
                   </div>

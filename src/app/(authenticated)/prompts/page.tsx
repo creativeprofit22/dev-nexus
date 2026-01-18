@@ -13,7 +13,6 @@ import {
 } from "@/modules/prompts/components/PromptEditor";
 import { Dialog } from "@/shared/components/ui/Dialog";
 import { VersionHistory } from "@/shared/components/ui/VersionHistory";
-import { Button } from "@/shared/components/ui/Button";
 import { usePrompts } from "@/modules/prompts/hooks/usePrompts";
 import { usePromptMutations } from "@/modules/prompts/hooks/usePromptMutations";
 import { usePromptVersions } from "@/modules/prompts/hooks/usePromptVersions";
@@ -31,11 +30,12 @@ export default function PromptsPage() {
     usePromptMutations();
   const {
     versions,
+    total: versionCount,
     isLoading: versionsLoading,
     refetch: refetchVersions,
   } = usePromptVersions({
     promptId: editingPrompt?.id || "",
-    enabled: showVersionHistory && !!editingPrompt?.id,
+    enabled: !!editingPrompt?.id,
   });
 
   const handleOpenCreate = () => {
@@ -57,17 +57,30 @@ export default function PromptsPage() {
     setShowVersionHistory(false);
   };
 
+  const handleSaveVersion = async () => {
+    if (!editingPrompt) return;
+    try {
+      await createVersion.mutateAsync({ promptId: editingPrompt.id });
+      refetchVersions();
+    } catch (err) {
+      console.error("Failed to save version:", err);
+    }
+  };
+
+  const handleShowHistory = () => {
+    setShowVersionHistory(true);
+    refetchVersions();
+  };
+
   const handleRestoreVersion = async (versionId: string) => {
     try {
-      await restoreVersion.mutateAsync({ versionId });
+      const restored = await restoreVersion.mutateAsync({ versionId });
       setShowVersionHistory(false);
       refetch();
+      refetchVersions();
       // Update the editing prompt with restored data
-      if (editingPrompt) {
-        const updated = prompts?.find((p) => p.id === editingPrompt.id);
-        if (updated) {
-          setEditingPrompt(updated);
-        }
+      if (restored) {
+        setEditingPrompt(restored);
       }
     } catch (err) {
       console.error("Failed to restore version:", err);
@@ -84,8 +97,7 @@ export default function PromptsPage() {
           tags: data.tags,
         });
       } else if (dialogMode === "edit" && editingPrompt) {
-        // Create version snapshot before updating
-        await createVersion.mutateAsync({ promptId: editingPrompt.id });
+        // User can manually save versions via "Save Version" button
         await updatePrompt.mutateAsync({
           id: editingPrompt.id,
           title: data.title,
@@ -125,26 +137,16 @@ export default function PromptsPage() {
             : "Update prompt details"
         }
       >
-        {dialogMode === "edit" && editingPrompt && (
-          <div className="mb-4 flex justify-end">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                setShowVersionHistory(true);
-                refetchVersions();
-              }}
-            >
-              View History
-            </Button>
-          </div>
-        )}
         <PromptEditor
-          key={editingPrompt?.id || "create"}
+          key={`${editingPrompt?.id || "create"}-${editingPrompt?.updatedAt || ""}`}
           prompt={editingPrompt || undefined}
           onSave={handleSave}
           onCancel={handleCloseDialog}
           isLoading={isMutating}
+          versionCount={versionCount}
+          onSaveVersion={handleSaveVersion}
+          onShowHistory={handleShowHistory}
+          isSavingVersion={createVersion.isLoading}
         />
       </Dialog>
 
@@ -153,6 +155,7 @@ export default function PromptsPage() {
         <VersionHistory
           versions={versions || []}
           isLoading={versionsLoading}
+          isRestoring={restoreVersion.isLoading}
           onRestore={handleRestoreVersion}
           onClose={() => setShowVersionHistory(false)}
         />

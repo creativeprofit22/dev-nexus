@@ -71,11 +71,31 @@ Server restart required for: db schema (`bun run db:push`), env vars, config fil
 - `MOODBOARD_DESIGN_SYSTEM.md` - Visual component specs (Neo-Brutalism, Claymorphism, etc.)
 - `COMPONENT_RESEARCH_2026.md` - GSAP/R3F patterns
 
+## Pipeline State
+Phase: refactor-hunt
+Feature: Version History
+Files-Validated: PromptEditor/index.tsx, prompts/page.tsx, VersionHistory/index.tsx, prompts.router.ts
+Validation-Report: reports/validation-version-history.md
+
+## Last Session (2026-01-17)
+**Feature**: Version History - VALIDATED
+
+**Bugs Fixed**:
+- Race condition on restore double-click (added isRestoring prop)
+- Auto-version spam removed (manual save only)
+- PromptEditor state refresh after restore (key includes updatedAt)
+- Cascade delete for versions when prompt deleted
+
+**Bottlenecks Fixed**:
+- Memoized detectedVariables and filteredVariables
+
+**Status**: All checks passing, ready for refactor-hunt
+
 ## Current Status
 
-**Completed**: CommandPalette, Export PNG/SVG/PDF, Live Preview, VS Code click-to-open, Mentions (@project)
+**Completed**: CommandPalette, Export PNG/SVG/PDF, Live Preview, VS Code click-to-open, Mentions (@project), Version History
 
-**Pending Priority 2**: Version history, Auto-fill variables, Dependency graph, Animated edges, Syntax highlighting, Props editor UI
+**Pending Priority 2**: Auto-fill variables, Dependency graph, Animated edges, Syntax highlighting, Props editor UI
 
 **Pending Priority 3**: Design system components from MOODBOARD_DESIGN_SYSTEM.md (GSAP animations, Glassmorphism cards, Neumorphism inputs, Neo-Brutalism buttons, Cyberpunk effects)
 

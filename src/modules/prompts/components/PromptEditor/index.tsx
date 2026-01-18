@@ -21,6 +21,10 @@ interface PromptEditorProps {
   onSave: (data: PromptEditorData) => Promise<void>;
   onCancel: () => void;
   isLoading?: boolean;
+  versionCount?: number;
+  onSaveVersion?: () => void;
+  onShowHistory?: () => void;
+  isSavingVersion?: boolean;
 }
 
 export interface PromptEditorData {
@@ -216,6 +220,10 @@ export function PromptEditor({
   onSave,
   onCancel,
   isLoading = false,
+  versionCount = 0,
+  onSaveVersion,
+  onShowHistory,
+  isSavingVersion = false,
 }: PromptEditorProps) {
   // Initialize state from prompt prop (parent should remount with key={prompt?.id})
   const [title, setTitle] = useState(prompt?.title || "");
@@ -255,13 +263,17 @@ export function PromptEditor({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [showTemplates]);
 
-  const detectedVariables = extractVariables(content);
+  const detectedVariables = useMemo(() => extractVariables(content), [content]);
 
   // Filter autocomplete options based on typed text after {{
-  const filteredVariables = AVAILABLE_VARIABLES.filter(
-    (v) =>
-      v.name.toLowerCase().includes(autocompleteFilter.toLowerCase()) ||
-      v.label.toLowerCase().includes(autocompleteFilter.toLowerCase())
+  const filteredVariables = useMemo(
+    () =>
+      AVAILABLE_VARIABLES.filter(
+        (v) =>
+          v.name.toLowerCase().includes(autocompleteFilter.toLowerCase()) ||
+          v.label.toLowerCase().includes(autocompleteFilter.toLowerCase())
+      ),
+    [autocompleteFilter]
   );
 
   // Insert variable at cursor position
@@ -763,19 +775,60 @@ export function PromptEditor({
       </div>
 
       {/* Action Buttons */}
-      <div className="flex gap-3 pt-4 border-t border-[#212730]">
-        <Button
-          type="button"
-          variant="secondary"
-          onClick={onCancel}
-          disabled={isLoading}
-          className="flex-1"
-        >
-          Cancel
-        </Button>
-        <Button type="submit" disabled={isLoading} className="flex-1">
-          {isLoading ? "Saving..." : prompt ? "Update Prompt" : "Create Prompt"}
-        </Button>
+      <div className="flex flex-col gap-3 pt-4 border-t border-[#212730]">
+        {/* Version Controls - only show when editing existing prompt */}
+        {prompt && (
+          <div className="flex items-center justify-between p-3 rounded-lg bg-[#181c24] border border-[#212730]">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-[#94a3b8]">
+                {versionCount === 0
+                  ? "No saved versions"
+                  : `${versionCount} saved version${versionCount === 1 ? "" : "s"}`}
+              </span>
+              {versionCount > 0 && onShowHistory && (
+                <button
+                  type="button"
+                  onClick={onShowHistory}
+                  className="text-xs text-sky-500 hover:text-sky-400 transition-colors"
+                >
+                  View History
+                </button>
+              )}
+            </div>
+            {onSaveVersion && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={onSaveVersion}
+                disabled={isLoading || isSavingVersion}
+                className="text-sky-500 hover:text-sky-400"
+              >
+                {isSavingVersion ? "Saving..." : "Save Version"}
+              </Button>
+            )}
+          </div>
+        )}
+
+        {/* Main Action Buttons */}
+        <div className="flex gap-3">
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={onCancel}
+            disabled={isLoading}
+            className="flex-1"
+          >
+            Cancel
+          </Button>
+          <Button type="submit" disabled={isLoading} className="flex-1">
+            {isLoading
+              ? "Saving..."
+              : prompt
+                ? "Update Prompt"
+                : "Create Prompt"}
+          </Button>
+        </div>
       </div>
     </form>
   );

@@ -397,7 +397,7 @@ export const promptsRouter = router({
    *
    * Ultra Think:
    * - Doesn't fail if prompt doesn't exist (idempotent)
-   * - No cascade needed (prompts don't have child records)
+   * - Cascades to delete associated version records
    */
   delete: publicProcedure
     .input(
@@ -406,6 +406,17 @@ export const promptsRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      // Delete associated versions first (cascade)
+      await ctx.db
+        .delete(versions)
+        .where(
+          and(
+            eq(versions.entityType, "prompt"),
+            eq(versions.entityId, input.id)
+          )
+        );
+
+      // Then delete the prompt
       await ctx.db.delete(prompts).where(eq(prompts.id, input.id));
 
       return { success: true };
