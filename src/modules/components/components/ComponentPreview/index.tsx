@@ -7,10 +7,12 @@
 
 import {
   useState,
+  useEffect,
   Component as ReactComponent,
   ErrorInfo,
   ReactNode,
 } from "react";
+import { codeToHtml } from "shiki";
 import type { Component } from "../../types/component.types";
 import { useLivePreview } from "../../hooks/useLivePreview";
 
@@ -71,11 +73,35 @@ class PreviewErrorBoundary extends ReactComponent<
 export function ComponentPreview({ component }: ComponentPreviewProps) {
   const [selectedVariant, setSelectedVariant] = useState<number>(0);
   const [activeTab, setActiveTab] = useState<TabType>("code");
+  const [highlightedHtml, setHighlightedHtml] = useState<string>("");
 
   const hasVariants = component.variants && component.variants.length > 0;
   const displayCode = component.code;
 
   const { srcdoc, error: previewError } = useLivePreview(displayCode);
+
+  // Shiki syntax highlighting
+  useEffect(() => {
+    if (!displayCode) return;
+    let cancelled = false;
+
+    codeToHtml(displayCode, {
+      lang: "tsx",
+      theme: "github-dark",
+    })
+      .then((html) => {
+        if (!cancelled) {
+          // Extract inner code content from Shiki's output
+          const match = html.match(/<code[^>]*>([\s\S]*?)<\/code>/);
+          setHighlightedHtml(match?.[1] ?? html);
+        }
+      })
+      .catch((err) => console.error("[Shiki] Highlight error:", err));
+
+    return () => {
+      cancelled = true;
+    };
+  }, [displayCode]);
 
   return (
     <div className="space-y-4">
@@ -159,9 +185,17 @@ export function ComponentPreview({ component }: ComponentPreviewProps) {
 
           {/* Code Block */}
           <pre className="p-4 overflow-x-auto max-h-96 overflow-y-auto">
-            <code className="text-sm font-mono text-[#cbd5e1] leading-relaxed">
-              {displayCode}
-            </code>
+            {highlightedHtml ? (
+              <code
+                className="text-sm leading-relaxed"
+                style={{ fontFamily: "monospace", lineHeight: 1.6 }}
+                dangerouslySetInnerHTML={{ __html: highlightedHtml }}
+              />
+            ) : (
+              <code className="text-sm font-mono text-[#cbd5e1] leading-relaxed">
+                {displayCode}
+              </code>
+            )}
           </pre>
         </div>
       )}
