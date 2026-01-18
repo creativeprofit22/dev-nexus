@@ -7,6 +7,7 @@
 
 import { useState, useMemo } from "react";
 import { usePrompts } from "../../hooks/usePrompts";
+import { useProjects } from "@/modules/projects/hooks/useProjects";
 import { PromptCard } from "../PromptCard";
 import { Button } from "@/shared/components/ui/Button";
 import { Input } from "@/shared/components/ui/Input";
@@ -37,6 +38,10 @@ export function PromptsView({ onNewPrompt, onEditPrompt }: PromptsViewProps) {
   );
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [selectedProjectId, setSelectedProjectId] = useState<string>("");
+
+  // Fetch projects for the context selector
+  const { projects } = useProjects({ status: "active" });
 
   // Fetch prompts with filters
   const { prompts, isLoading, isError, error, refetch } = usePrompts({
@@ -83,7 +88,7 @@ export function PromptsView({ onNewPrompt, onEditPrompt }: PromptsViewProps) {
       </div>
 
       {/* Search Bar */}
-      <div className="flex gap-3 items-center">
+      <div className="flex gap-3 items-center flex-wrap">
         <div className="flex-1 max-w-md">
           <Input
             placeholder="Search prompts..."
@@ -91,6 +96,26 @@ export function PromptsView({ onNewPrompt, onEditPrompt }: PromptsViewProps) {
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
+
+        {/* Project Context Selector */}
+        <div className="flex items-center gap-2">
+          <label className="text-sm text-[#64748b] whitespace-nowrap">
+            Auto-fill from:
+          </label>
+          <select
+            value={selectedProjectId}
+            onChange={(e) => setSelectedProjectId(e.target.value)}
+            className="px-3 py-2 rounded-lg border border-[#212730] bg-[#14161c] text-[#cbd5e1] text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500"
+          >
+            <option value="">No project</option>
+            {projects?.map((project) => (
+              <option key={project.id} value={project.id}>
+                {project.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
         <div className="flex gap-2">
           <Button
             variant={viewMode === "grid" ? "primary" : "secondary"}
@@ -216,7 +241,12 @@ export function PromptsView({ onNewPrompt, onEditPrompt }: PromptsViewProps) {
           }
         >
           {prompts.map((prompt) => (
-            <PromptCard key={prompt.id} prompt={prompt} onEdit={onEditPrompt} />
+            <PromptCard
+              key={prompt.id}
+              prompt={prompt}
+              projectId={selectedProjectId || undefined}
+              onEdit={onEditPrompt}
+            />
           ))}
         </div>
       ) : (
